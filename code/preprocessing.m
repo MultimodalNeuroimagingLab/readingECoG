@@ -377,7 +377,7 @@ for p = 1:numtasks
         colorbar;
         set(gca,'XTick',0:1000:8000)
         set(gca,'XTickLabel',-0.5:0.5:3.5)
-        figurewrite(sprintf('~/inout/channelmaps/task%d_stim%02d',p,lll));
+        figurewrite(sprintf('task%d_stim%02d',p,lll),[],[],'~/inout/channelmaps');
     end
 end
 
@@ -402,7 +402,7 @@ for p = 1:numtasks
         hold on;
         plot((squeeze(psdmean_norm(1,74,p,lll,:))),'g');
         hold off;
-        figurewrite(sprintf('~/inout/RTPO_3_4/task%d_stim%02d',p,lll));
+        figurewrite(sprintf('task%d_stim%02d',p,lll),[],[],'~/inout/RTPO_3_4');
     end
 end
 
