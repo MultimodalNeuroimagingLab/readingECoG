@@ -1,25 +1,29 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% SETUP
 
+%path D:\Zeeshan\reading-ecog\readingECoG
+
 % define
 subjects = {'YBA'};
-subjectfilenums = {[12 13 14 15]};  % this is for the file names (one file per run?)
+subjectfilenums = {[12 13 14 15]};  % this is for the file names (one file per run per [subject])
 channels = 1:128;
-numchannels = 128;
+numchannels = 96;   % only for subject YBA; when including other subjects make 128;
 photodiode = 129;   % photodiode signal is in #129
 epochrng = [-.5 3.5];  % pull out this time range (in seconds)
 onsetix = {{1:66 1:66 1:66 1:66}};  % indices to pull the black circle (based on the no of stimulus trials per run; photodiode detects this circle)
 fsorig = 2000;    % sampling rate (original)
 fsjump = 10;      % moving average length
-fs = 200;         % sampling rate (down-sampled to)
+fs = fsorig/fsjump;         		% sampling rate (down-sampled to)
+fupper = 200;     % upperbound for frequency analysis
 numtasks = 2;     % alternate the tasks
-numreps = 6;      % 6 total trials for each numtasks (FC_1 - 3 trials, FC_2 = 3 trials)
-numstimuli = 24;  % remember that we don't use #1 and #3, so entries for this will be blank
-numtrials = 66;   % in one run, there are these many stimulus trials (numstimuli X 3/numstimuli)
+numreps = 6;      % 6 total trials for each numtasks (FC#1: 3 trials, FC#2: 3 trials)
+numstimuli = 24;  % remember that we don't use #1 and #3, so entries for this will be blank 
+numtrials = 66;   % in one run, there are these many stimulus trials (numstimuli X 3 trials per numstimuli)
 numruns = 4;      % total number of runs per subject (FCFC)
 tasklabels = {'Fixation' 'Categorization'};
  
 % calc
-epochtime = (epochrng(1)*fs : epochrng(2)*fs)/fs;  % time in seconds for each data point of an epoch (5 ms interval)
+%epochtime = (epochrng(1)*fs : epochrng(2)*fs)/fs;
+epochtime = (epochrng(1)*fsorig : epochrng(2)*fsorig)/fsorig;  % time in seconds for each data point of an epoch
 
 %%
 
@@ -81,22 +85,25 @@ repmat({'X'},[1 32]) ...
 % do it
 onsets = zeros(numtrials,length(subjects),numruns);  % indices of data points at which trials occur
 data = zeros(length(epochtime),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
-psd = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,101,'single');
+psd = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,'single');
 stimcounter = zeros(length(subjects),numchannels,numtasks,numstimuli);  % number of trials encountered so far
 recdata = {};
 bbtemp = {};
+bb_bptemp = {};
 for zzz=1:length(subjects)
 
   % get behavioral files
-  files = matchfiles(sprintf('%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
+  files = matchfiles(sprintf('../BeauchampECOG/%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
   assert(length(files)==length(subjectfilenums{zzz}));
-
+  
+  onsetpoints = []; % done only for YBA. need to revisit while including other subjects
+  optemp = 0;
   % process each run (photodiode)
   for p=1:length(subjectfilenums{zzz})
 
     % load photodiode information
     chantoload = photodiode;     % the special 129
-    file0 = sprintf('%s/%sDatafile%03d_ch%d.mat', ...
+    file0 = sprintf('../BeauchampECOG/%s/%sDatafile%03d_ch%d.mat', ...
                     subjects{zzz},subjects{zzz},subjectfilenums{zzz}(p),chantoload);
     pd = load(file0);
     fs0 = pd.analogInfos.SampleRate; assert(fs0==fsorig);
@@ -115,14 +122,15 @@ for zzz=1:length(subjects)
     assert(length(theseOnsets)==numtrials);  % sanity check that we got the right number of stimulus trials
 
     % visualize for sanity
-    figureprep([100 100 1000 300]); hold on;
+    figureprep([100 100 1000 300]); hold on;		% figureprep & figurewrite(knkutils)
     plot(pd.analogTraces);
     straightline(theseOnsets,'v','m-');
     figurewrite(sprintf('photodiode_subj%d_file%d',zzz,p),[],[],'~/inout/photodiode');
 
     % record
     onsets(:,zzz,p) = theseOnsets;
-  
+    onsetpoints = [onsetpoints optemp+theseOnsets]; % cumulative epoch points
+    optemp = optemp + length(pd.analogTraces);	% cumulative length of runs 
   end
   
   % process each channel
@@ -136,17 +144,13 @@ for zzz=1:length(subjects)
 
       % load data
       chantoload = channels(ccc);  % the usual 1-128
-      file0 = sprintf('%s/%sDatafile%03d_ch%d.mat', ...
+      file0 = sprintf('../BeauchampECOG/%s/%sDatafile%03d_ch%d.mat', ...
                       subjects{zzz},subjects{zzz},subjectfilenums{zzz}(p),chantoload);
       if ~exist(file0,'file')
         continue;
       end
       pd = load(file0);
       fs0 = pd.analogInfos.SampleRate; assert(fs0==fsorig);
-
-% NO LONGER VALID
-%       % calc
-%       assert(length(pd.analogTraces)==numsam);  % check that same as photodiode length
       
       % record data
       collectdata = [collectdata pd.analogTraces];
@@ -160,39 +164,43 @@ for zzz=1:length(subjects)
     end
     
     % now do broadband:
+    
+	% OLD way (version 1): bb = g(pd.analogTraces);   % <===== NOTE THIS!!! 
 
-% OLD way (version 1):
-%        bb = g(pd.analogTraces);   % <===== NOTE THIS!!! 
-
-% NEW way:
+    collectdata = collectdata';  %convert to time X channels
+	% NEW way:
     bands = [70 90;  % 20 hz bins, avoiding 60 and 180 (max 210)
              90 110;
              110 130;
              130 150;
              150 170];   %% HACK OUT
 %             190 210];
-    bb = ecog_extractBroadband(collectdata',fsorig,[],bands);  % NOTE: WE DO WHOLE EXPERIMENT AT ONCE TO ENSURE EQUAL SCALING ISSUE...
-                                                               % ecog_extractBroadband (ECoG utilities by JW_NYU)
-                                                        
-% RAW CASE:
-%        bb = pd.analogTraces;
+    bb = ecog_extractBroadband(collectdata,fsorig,[],bands);  % NOTE: WE DO WHOLE EXPERIMENT AT ONCE TO ENSURE EQUAL SCALING ISSUE...
+                                                              % ecog_extractBroadband: mean after hilbert; power; geomean (ECoG utilities by JW_NYU)
+ 
+    bb_bp = ieeg_butterpass(collectdata, [70 170], fsorig);   % bandpass; amplitude (mnl_ieegBasics by DH)
 
-    % save broadband so we can inspect it!
-    bbtemp{zzz,ccc} = single(bb);
-    recdata{zzz,ccc} = single(collectdata');
+	% 	RAW CASE: bb = pd.analogTraces;
+
+    
+    bbtemp{zzz,ccc} = single(bb);   % save broadband so we can inspect it!
+    bb_bptemp{zzz,ccc} = single(bb_bp);
     
 
     % TOTAL HACK SPIKE (detect later!)
     assert(all(isfinite(bb)));
     if zzz==1   %subject YBA
-      badrng = 1.072 * 10^6 : 1.09 * 10^6;
+      badrng = 1.072 * 10^6 : 1.09 * 10^6; % data seems to be corrupted in this time range for all channels
       bb(badrng) = NaN;  %%median(bb(setdiff(1:length(bb),badrng)));
+      collectdata(badrng) = NaN;
       badval = nanmedian(bb);  % **ROBUST
+      badvalraw = nanmedian(collectdata);
     end
     
+    recdata{zzz,ccc} = single(collectdata);    % raw data amplitude
     % compute moving average to reduce data rate to 200Hz (2000/10)
     bb = movmean(bb,  fsjump,1);  % slight slop due to evenness of the number.  we can plop this in the photodiode transition issue.
-    collectdata = movmean(collectdata',  fsjump,1);
+    bb_bp = movmean(bb_bp,  fsjump,1);
     
     % process each run
     for p=1:length(subjectfilenums{zzz})
@@ -203,49 +211,118 @@ for zzz=1:length(subjects)
       % extract epochs (trials)
       for ttt=1:size(onsets,1)
         ix = onsets(ttt,zzz,p) + (epochrng(1)*fsorig : fsjump : epochrng(2)*fsorig);  % NOTE: the 10 makes things nice and even, and hits 0
-        temp = bb(sum(bblengths(1:p-1)) + ix);
-        temp1 = collectdata(sum(bblengths(1:p-1)) + ix);
+        ix1 = onsets(ttt,zzz,p) + (0*fsorig : 2*fsorig);		% frequency analysis (t =   0 : 2  s; f = 2 kHz)
+        ix2 = onsets(ttt,zzz,p) + (-0.5*fsorig : 3.5*fsorig);	% channel analysis	 (t = -0.5:3.5 s; f = 2 kHz)
+        temp = bb(sum(bblengths(1:p-1)) + ix);				% bb analysis
+        temp1 = collectdata(sum(bblengths(1:p-1)) + ix1);	% frequency analysis
+		temp2 = collectdata(sum(bblengths(1:p-1)) + ix2);	% channel analysis
         if any(isnan(temp))
           fprintf('BADDATA: ttt=%d, p=%d, ccc=%d, zzz=%d\n',ttt,p,ccc,zzz);
           temp(:) = badval;
         end
+        if any(isnan(temp1))
+		  temp = badval;
+          temp1(:) = badvalraw;
+          temp2(:) = badvalraw;
+        end
+		%stimco = stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
         data(:,zzz,ccc,mod2(p,2), ...
              stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % a1.stimclassrec tells us the stim number (1-24)
-             a1.stimclassrec(ttt)) = temp;
-        [psdvar,f] = pwelch(temp1,400,0,fs,fs);
-        %stimco = stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
+             a1.stimclassrec(ttt)) = temp2;
+        [psdvar,f] = pwelch(temp1,hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
         psd(zzz,ccc,mod2(p,2), ...
              stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % calculating psd from raw data
-             a1.stimclassrec(ttt),:) = psdvar';
+             a1.stimclassrec(ttt),:) = psdvar(1:fupper,1)';
+		stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) = ...
+          stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
+      end
         %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
         %figurewrite(sprintf('~/psd/task%d_%03d%02d%d', ...
         %    mod2(p,2),ccc,a1.stimclassrec(ttt),stimco));
-        stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) = ...
-          stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
-      end
-
+       
     end
   end
+  
+  
 end
 
-%% PSD AVG ACROSS TRIALS FOR A CHANNEL
-psdmean_trials= zeros(length(subjects),numchannels,numtasks,numstimuli,length(psdvar),'single');
-
-for lll =1:numstimuli
-    psdmean_trials(:,:,:,lll,:) = (psd(:,:,:,1,lll,:)+psd(:,:,:,2,lll,:)+psd(:,:,:,3,lll,:))/3;    
-end
-
-
+%% CAR
 tempsum = 0;
-for p =1:numtasks
-    for lll =1:numstimuli
-        tempsum = tempsum + squeeze(psdmean_trials(:,:,p,lll,:));
+for ccc = 1:96
+    tempsum = tempsum + recdata{1,ccc};
+end
+tempsum = tempsum/96;
+car_recdata = recdata;
+for ccc = 1:96
+    car_recdata{1,ccc} = car_recdata{1,ccc} - tempsum;
+end
+    
+%% AVG ACROSS TRIALS FOR A CHANNEL
+psdmean_trials= zeros(length(subjects),numchannels,numtasks,numstimuli-1,fupper,'single');
+datamean_trials = zeros(length(epochtime),length(subjects),numchannels,numtasks,numstimuli,'single');
+
+
+% Data
+for lll = 1:numstimuli
+    tempsum = 0;
+    for rrr = 1:numreps
+        tempsum = tempsum + squeeze(data(:,:,:,:,rrr,lll));
     end
+    datamean_trials(:,:,:,:,lll) = tempsum/numreps;
+end
+
+% PSD
+for lll = 1:numstimuli
+    tempsum = 0;
+    for rrr = 1:numreps
+        tempsum = tempsum + squeeze(psd(:,:,:,rrr,lll,:));
+    end
+    psdmean_trials(:,:,:,lll,:) = tempsum/numreps;
+end
+
+% Normalizing PSDs
+psdmean_norm = psdmean_trials;
+
+for p = 1:numtasks
+    tempsum = 0;
     for lll =1:numstimuli
-        psdmean_trials(:,:,p,lll,:) = log(squeeze(psdmean_trials(:,:,p,lll,:))./(tempsum/numstimuli));
+        tempsum = tempsum + squeeze(psdmean_norm(:,:,p,lll,:));
+    end
+    tempsum = tempsum/22;
+    for lll = 1:numstimuli
+        psdmean_norm(:,:,p,lll,:) = log(squeeze(psdmean_norm(:,:,p,lll,:))./(tempsum));
     end
 end
 
+%% PCA
+total_psd = zeros(numtasks,numchannels*numstimuli,fupper);
+
+counter = 1;
+for p = 1:numtasks
+    for ccc = 1:numchannels
+        for lll = 1:numstimuli
+            for ppp = 1:fupper
+                total_psd(numtasks,counter,ppp) = [squeeze(psdmean_norm(1,ccc,p,lll,ppp))]';
+                if(isinf(total_psd(numtasks,counter,ppp)) | isnan(total_psd(numtasks,counter,ppp)))
+                    total_psd(numtasks,counter,ppp)=0;
+                end
+            end
+            counter = counter + 1;
+        end
+    end
+end
+
+[coeff,score,latent,~,explained,mu] = pca(squeeze(total_psd(2,:,:))');
+
+%% PCA plots
+score_length = size(score, 1);
+tx_vect= score(1:score_length, 1);
+plot(tx_vect,'r'); hold on;
+tx_vect= score(1:score_length, 2);
+plot(tx_vect,'b');
+tx_vect= score(1:score_length, 3);
+plot(tx_vect,'g'); 
+xlim([0 200]); ylim([-10 10]); hold off;
 
 
 %%
@@ -266,7 +343,15 @@ end
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% QUICK LOOK AT SOME BB TIMECOURSES TO CHECK SANITY
 
-figureprep([100 100 900 300],1); plot(log(smooth(bbtemp{1,46},2000)));  %subject YBA
+figureprep([100 100 900 300],1); hold on; plot(log(smooth(bbtemp{1,46},2000)));straightline(theseOnsets,'v','m-');straightline(theseOnsets+0.1*fsorig,'v','g-');  %subject YBA
+% for ccc = 1:numchannels
+%     figureprep([100 100 900 300],1); hold on; plot(recdata{1,ccc}); straightline(onsetpoints,'v','m-');hold off;
+%     figurewrite(sprintf('~/inout/rawdata/channel%03d',ccc));
+% end
+figureprep([100 100 900 300],1); plot(bb_bptemp{1,46});
+figureprep([100 100 900 300],1); hold on; plot(recdata{1,46});
+xlim([15000 30000]);straightline(theseOnsets,'v','m-');straightline(theseOnsets+0.1*fsorig,'v','g-');
+figureprep([100 100 900 300],1);plot(10*log10(squeeze(psdmean_trials(1,46,2,4,:))));xlim([0 200])
 figurewrite('bb_subjYBA_ch46');
 figureprep([100 100 900 300],1); plot(log(smooth(bbtemp{1,78},2000)));  %subject YBA
 figurewrite('bb_subjYBA_ch78');
@@ -277,9 +362,82 @@ figure;plot(mean(catcell(2,bbtemp(1,:)),2));
 figurewrite('mean');
 %figure;plot(mean(catcell(2,bbtemp(3,:)),2));
 
+
+for ccc = 1:numchannels
+    semilogy((squeeze(psdmean_trials(1,ccc,2,4,:))),'b');
+    hold on;
+end
+
+%channel maps
+for p = 1:numtasks
+    for lll = 1:numstimuli
+        figureprep([100 100 900 300],1);
+		clims = [-250 250];
+        imagesc((squeeze(datamean_trials(:,1,:,p,lll)))',clims);
+        colorbar;
+        set(gca,'XTick',0:1000:8000)
+        set(gca,'XTickLabel',-0.5:0.5:3.5)
+        figurewrite(sprintf('task%d_stim%02d',p,lll),[],[],'~/inout/channelmaps');
+    end
+end
+
+%RTPO_3_4 plots
+for p = 1:numtasks
+    for lll = 1:numstimuli
+        figureprep([100 100 1800 300],1);
+        subplot(2,2,[1,2]);
+        plot((squeeze(datamean_trials(:,1,73,p,lll)))','r');
+        hold on;
+        plot((squeeze(datamean_trials(:,1,74,p,lll)))','g');
+        hold off;
+        set(gca,'XTick',0:1000:8000)
+        set(gca,'XTickLabel',-0.5:0.5:3.5)
+        subplot(2,2,3);
+        semilogy((squeeze(psdmean_trials(1,73,p,lll,:))),'r');
+        hold on;
+        semilogy((squeeze(psdmean_trials(1,74,p,lll,:))),'g');
+        hold off;
+        subplot(2,2,4);
+        plot((squeeze(psdmean_norm(1,73,p,lll,:))),'r');
+        hold on;
+        plot((squeeze(psdmean_norm(1,74,p,lll,:))),'g');
+        hold off;
+        figurewrite(sprintf('task%d_stim%02d',p,lll),[],[],'~/inout/RTPO_3_4');
+    end
+end
+
+% psdmean_trials Plot
+semilogy((squeeze(psdmean_trials(1,76,2,3,:))),'m');
+hold on;
+semilogy((squeeze(psdmean_trials(1,76,2,18,:))),'g');
+semilogy((squeeze(psdmean_trials(1,76,2,19,:))),'b');
+semilogy((squeeze(psdmean_trials(1,76,2,5,:))),'r');
+hold off;
+lgd = legend('3','5','8','100');
+title(lgd,'Word Contrast')
+
+% psdmean_norm plot
+figureprep([100 100 900 300],1);
+hold on;
+plot((squeeze(psdmean_norm(1,76,2,17,:))),'m');
+plot((squeeze(psdmean_norm(1,76,2,18,:))),'g');
+plot((squeeze(psdmean_norm(1,76,2,19,:))),'b');
+plot((squeeze(psdmean_norm(1,76,2,5,:))),'r');
+hold off;
+lgd = legend('3','5','8','100');
+title(lgd,'Word Contrast')
+
 % OLD:
 %         % visualize for sanity
 %         figureprep([100 100 1000 300]); hold on;
 %         plot(bb);
 %         figurewrite(sprintf('ch%d',chantoload),[],[],sprintf('~/inout/bb_subj%d/file%d',zzz,p));
 
+%%
+tempsum = recdata{1,47};
+for i = 1: size(tempsum,1)
+    if(isinf(tempsum(i,1)) | isnan(tempsum(i,1)))
+                    tempsum(i,1)=0;
+    end
+end
+recdata{1,47} = tempsum;
