@@ -93,7 +93,7 @@ bb_bptemp = {};
 for zzz=1:length(subjects)
 
   % get behavioral files
-  files = matchfiles(sprintf('../BeauchampECOG/%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
+  files = matchfiles(sprintf('../data/%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
   assert(length(files)==length(subjectfilenums{zzz}));
   
   onsetpoints = []; % done only for YBA. need to revisit while including other subjects
@@ -103,7 +103,7 @@ for zzz=1:length(subjects)
 
     % load photodiode information
     chantoload = photodiode;     % the special 129
-    file0 = sprintf('../BeauchampECOG/%s/%sDatafile%03d_ch%d.mat', ...
+    file0 = sprintf('../data/%s/%sDatafile%03d_ch%d.mat', ...
                     subjects{zzz},subjects{zzz},subjectfilenums{zzz}(p),chantoload);
     pd = load(file0);
     fs0 = pd.analogInfos.SampleRate; assert(fs0==fsorig);
@@ -122,7 +122,8 @@ for zzz=1:length(subjects)
     assert(length(theseOnsets)==numtrials);  % sanity check that we got the right number of stimulus trials
 
     % visualize for sanity
-    figureprep([100 100 1000 300]); hold on;		% figureprep & figurewrite(knkutils)
+    % figureprep([100 100 1000 300]); hold on;		% figureprep & figurewrite(knkutils)
+    figure('Position',[100 100 1000 300]); hold on;
     plot(pd.analogTraces);
     straightline(theseOnsets,'v','m-');
     figurewrite(sprintf('photodiode_subj%d_file%d',zzz,p),[],[],'~/inout/photodiode');
@@ -144,7 +145,7 @@ for zzz=1:length(subjects)
 
       % load data
       chantoload = channels(ccc);  % the usual 1-128
-      file0 = sprintf('../BeauchampECOG/%s/%sDatafile%03d_ch%d.mat', ...
+      file0 = sprintf('../data/%s/%sDatafile%03d_ch%d.mat', ...
                       subjects{zzz},subjects{zzz},subjectfilenums{zzz}(p),chantoload);
       if ~exist(file0,'file')
         continue;
