@@ -247,6 +247,41 @@ for zzz=1:length(subjects)
   
 end
 
+
+%% CHANNEL AVG TIME AND FREQUENCY RESPONSE
+
+bb_data_avg = mean(reshape(bb_data,length(epochtime_bb),numchannels,numtasks*numreps*numstimuli),3)';
+data_avg = mean(reshape(data,length(epochtime),numchannels,numtasks*numreps*numstimuli),3)';
+psd_avg = squeeze(mean(reshape(psd,numchannels,numtasks*numreps*numstimuli,fupper),2));
+
+
+%% PLOT CHANNEL AVG TIME AND FREQUENCY RESPONSE
+
+figure,imagesc(bb_data_avg);
+colorbar;
+set(gca,'XTick',0:100:800)
+set(gca,'XTickLabel',-0.5:0.5:3.5)
+
+figure,imagesc(data_avg);
+colorbar;
+set(gca,'XTick',0:1000:8000)
+set(gca,'XTickLabel',-0.5:0.5:3.5)
+
+plot(data_avg(75,:))
+hold on;
+plot(data_avg(76,:))
+plot(data_avg(77,:))
+plot(data_avg(78,:))
+hold off;
+
+figure,imagesc(psd_avg);
+colorbar;
+
+
+
+% under review below this %
+
+
 %% CAR
 tempsum = 0;
 for ccc = 1:96
