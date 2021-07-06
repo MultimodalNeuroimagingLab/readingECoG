@@ -1,6 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% SETUP
 
-%path D:\Zeeshan\reading-ecog\readingECoG
 
 % define
 subjects = {'YBA'};
@@ -22,7 +21,7 @@ numruns = 4;      % total number of runs per subject (FCFC)
 tasklabels = {'Fixation' 'Categorization'};
  
 % calc
-%epochtime = (epochrng(1)*fs : epochrng(2)*fs)/fs;
+epochtime_bb = (epochrng(1)*fs : epochrng(2)*fs)/fs;
 epochtime = (epochrng(1)*fsorig : epochrng(2)*fsorig)/fsorig;  % time in seconds for each data point of an epoch
 
 %%
@@ -85,6 +84,7 @@ repmat({'X'},[1 32]) ...
 % do it
 onsets = zeros(numtrials,length(subjects),numruns);  % indices of data points at which trials occur
 data = zeros(length(epochtime),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
+bb_data = zeros(length(epochtime_bb),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
 psd = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,'single');
 stimcounter = zeros(length(subjects),numchannels,numtasks,numstimuli);  % number of trials encountered so far
 recdata = {};
@@ -122,9 +122,9 @@ for zzz=1:length(subjects)
     assert(length(theseOnsets)==numtrials);  % sanity check that we got the right number of stimulus trials
 
     % visualize for sanity
-    % figureprep([100 100 1000 300]); hold on;		% figureprep & figurewrite(knkutils)
-    figure('Position',[100 100 1000 300]); hold on;
+    %figureprep([100 100 1000 300]); hold on;		% figureprep & figurewrite(knkutils)
     plot(pd.analogTraces);
+	figure('Position',[100 100 1000 300]); hold on;
     straightline(theseOnsets,'v','m-');
     figurewrite(sprintf('photodiode_subj%d_file%d',zzz,p),[],[],'~/inout/photodiode');
 
@@ -221,12 +221,19 @@ for zzz=1:length(subjects)
           fprintf('BADDATA: ttt=%d, p=%d, ccc=%d, zzz=%d\n',ttt,p,ccc,zzz);
           temp(:) = badval;
         end
-        if any(isnan(temp1))
+        if any(isnan(temp))
 		  temp = badval;
-          temp1(:) = badvalraw;
-          temp2(:) = badvalraw;
+        end
+        if any(isnan(temp1))
+		  temp1(:) = badvalraw;
+        end
+        if any(isnan(temp2))
+		  temp2(:) = badvalraw;
         end
 		%stimco = stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
+        bb_data(:,zzz,ccc,mod2(p,2), ...
+             stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % a1.stimclassrec tells us the stim number (1-24)
+             a1.stimclassrec(ttt)) = temp;
         data(:,zzz,ccc,mod2(p,2), ...
              stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % a1.stimclassrec tells us the stim number (1-24)
              a1.stimclassrec(ttt)) = temp2;
@@ -238,7 +245,6 @@ for zzz=1:length(subjects)
           stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
       end
         %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
-        %figurewrite(sprintf('~/psd/task%d_%03d%02d%d', ...
         %    mod2(p,2),ccc,a1.stimclassrec(ttt),stimco));
        
     end
@@ -246,6 +252,7 @@ for zzz=1:length(subjects)
   
   
 end
+
 
 
 %% CHANNEL AVG TIME AND FREQUENCY RESPONSE
