@@ -23,7 +23,6 @@ tasklabels = {'Fixation' 'Categorization'};
 % calc
 epochtime_bb = (epochrng(1)*fs : epochrng(2)*fs)/fs;
 epochtime = (epochrng(1)*fsorig : epochrng(2)*fsorig)/fsorig;  % time in seconds for each data point of an epoch
-
 %%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% SETUP CONTINUED (ASSIGN LABELS TO CHANNELS)
@@ -85,7 +84,8 @@ repmat({'X'},[1 32]) ...
 onsets = zeros(numtrials,length(subjects),numruns);  % indices of data points at which trials occur
 data = zeros(length(epochtime),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
 bb_data = zeros(length(epochtime_bb),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
-psd = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,'single');
+psd_on = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,'single');
+psd_off = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,'single');
 stimcounter = zeros(length(subjects),numchannels,numtasks,numstimuli);  % number of trials encountered so far
 recdata = {};
 bbtemp = {};
@@ -123,8 +123,8 @@ for zzz=1:length(subjects)
 
     % visualize for sanity
     %figureprep([100 100 1000 300]); hold on;		% figureprep & figurewrite(knkutils)
+    figure('position',[100 100 1000 300]); hold on;
     plot(pd.analogTraces);
-	figure('Position',[100 100 1000 300]); hold on;
     straightline(theseOnsets,'v','m-');
     figurewrite(sprintf('photodiode_subj%d_file%d',zzz,p),[],[],'~/inout/photodiode');
 
@@ -211,60 +211,56 @@ for zzz=1:length(subjects)
 
       % extract epochs (trials)
       for ttt=1:size(onsets,1)
-        ix = onsets(ttt,zzz,p) + (epochrng(1)*fsorig : fsjump : epochrng(2)*fsorig);  % NOTE: the 10 makes things nice and even, and hits 0
-        ix1 = onsets(ttt,zzz,p) + (0*fsorig : 2*fsorig);		% frequency analysis (t =   0 : 2  s; f = 2 kHz)
-        ix2 = onsets(ttt,zzz,p) + (-0.5*fsorig : 3.5*fsorig);	% channel analysis	 (t = -0.5:3.5 s; f = 2 kHz)
-        temp = bb(sum(bblengths(1:p-1)) + ix);				% bb analysis
-        temp1 = collectdata(sum(bblengths(1:p-1)) + ix1);	% frequency analysis
-		temp2 = collectdata(sum(bblengths(1:p-1)) + ix2);	% channel analysis
-        if any(isnan(temp))
+        ix_bb = onsets(ttt,zzz,p) + (epochrng(1)*fsorig : fsjump : epochrng(2)*fsorig);  % NOTE: the 10 makes things nice and even, and hits 0
+        ix_raw = onsets(ttt,zzz,p) + (epochrng(1)*fsorig : epochrng(2)*fsorig);	% channel analysis	 (t = -0.5:3.5 s; f = 2 kHz)
+        on_samples  = length(epochrng(1)*fsorig:0*fsorig) : length(epochrng(1)*fsorig:0*fsorig) + 2 * fsorig - 1;  % samples corresponding to on stimuli
+        %off_samples = cat (2, 1 : length(epochrng(1)*fsorig:0*fsorig)-1, length(epochrng(1)*fsorig:0*fsorig) + 2 * fsorig : 4*fsorig);  % samples corresponding to off-stimuli-period
+        off_samples = 1 : length(epochrng(1)*fsorig:0*fsorig)-1;
+        temp_bb = bb(sum(bblengths(1:p-1)) + ix_bb);			% bb analysis
+		temp_raw = collectdata(sum(bblengths(1:p-1)) + ix_raw);	% raw analysis
+        if any(isnan(temp_bb))
           fprintf('BADDATA: ttt=%d, p=%d, ccc=%d, zzz=%d\n',ttt,p,ccc,zzz);
-          temp(:) = badval;
+          temp_bb(:) = badval;
         end
-        if any(isnan(temp))
-		  temp = badval;
+        if any(isnan(temp_raw))
+		  temp_raw(:) = badval;
         end
-        if any(isnan(temp1))
-		  temp1(:) = badvalraw;
-        end
-        if any(isnan(temp2))
-		  temp2(:) = badvalraw;
-        end
+        
 		%stimco = stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
         bb_data(:,zzz,ccc,mod2(p,2), ...
              stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % a1.stimclassrec tells us the stim number (1-24)
-             a1.stimclassrec(ttt)) = temp;
+             a1.stimclassrec(ttt)) = temp_bb;
         data(:,zzz,ccc,mod2(p,2), ...
              stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % a1.stimclassrec tells us the stim number (1-24)
-             a1.stimclassrec(ttt)) = temp2;
-        [psdvar,f] = pwelch(temp1,hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
-        psd(zzz,ccc,mod2(p,2), ...
+            a1.stimclassrec(ttt)) = temp_raw;
+        [psdvar,f] = pwelch(temp_raw(on_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
+         %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
+        psd_on(zzz,ccc,mod2(p,2), ...
              stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % calculating psd from raw data
-             a1.stimclassrec(ttt),:) = psdvar(1:fupper,1)';
+             a1.stimclassrec(ttt),:) = psdvar(1:fupper);
+        [psdvar,f] = pwelch(temp_raw(off_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
+        psd_off(zzz,ccc,mod2(p,2), ...
+             stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1, ...   % calculating psd from raw data
+             a1.stimclassrec(ttt),:) = psdvar(1:fupper);
 		stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) = ...
           stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
       end
-        %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
-        %    mod2(p,2),ccc,a1.stimclassrec(ttt),stimco));
-       
+    
     end
-  end
-  
-  
+  end  
 end
-
-
 
 %% CHANNEL AVG TIME AND FREQUENCY RESPONSE
 
+psd_baseline = squeeze(mean(reshape(psd_off,zzz*numchannels*numtasks*numreps*numstimuli,fupper),1));
 bb_data_avg = mean(reshape(bb_data,length(epochtime_bb),numchannels,numtasks*numreps*numstimuli),3)';
 data_avg = mean(reshape(data,length(epochtime),numchannels,numtasks*numreps*numstimuli),3)';
-psd_avg = squeeze(mean(reshape(psd,numchannels,numtasks*numreps*numstimuli,fupper),2));
-
+psd_avg = squeeze(mean(reshape(psd_on,numchannels,numtasks*numreps*numstimuli,fupper),2));
 
 %% PLOT CHANNEL AVG TIME AND FREQUENCY RESPONSE
 
-figure,imagesc(bb_data_avg);
+clims = [0 50];
+figure,imagesc(bb_data_avg,clims);
 colorbar;
 set(gca,'XTick',0:100:800)
 set(gca,'XTickLabel',-0.5:0.5:3.5)
@@ -281,206 +277,87 @@ plot(data_avg(77,:))
 plot(data_avg(78,:))
 hold off;
 
-figure,imagesc(psd_avg);
-colorbar;
+%% Plot normalized PSD
 
+ccc = 27;
+plot((normalize(10*log10(psd_avg(ccc,:)) - 10*log10(psd_baseline))))
 
+%% Stimuli Timecourse
 
-% under review below this %
+ccc = 75;
 
-
-%% CAR
-tempsum = 0;
-for ccc = 1:96
-    tempsum = tempsum + recdata{1,ccc};
-end
-tempsum = tempsum/96;
-car_recdata = recdata;
-for ccc = 1:96
-    car_recdata{1,ccc} = car_recdata{1,ccc} - tempsum;
-end
-    
-%% AVG ACROSS TRIALS FOR A CHANNEL
-psdmean_trials= zeros(length(subjects),numchannels,numtasks,numstimuli-1,fupper,'single');
-datamean_trials = zeros(length(epochtime),length(subjects),numchannels,numtasks,numstimuli,'single');
-
-
-% Data
-for lll = 1:numstimuli
-    tempsum = 0;
-    for rrr = 1:numreps
-        tempsum = tempsum + squeeze(data(:,:,:,:,rrr,lll));
-    end
-    datamean_trials(:,:,:,:,lll) = tempsum/numreps;
-end
-
-% PSD
-for lll = 1:numstimuli
-    tempsum = 0;
-    for rrr = 1:numreps
-        tempsum = tempsum + squeeze(psd(:,:,:,rrr,lll,:));
-    end
-    psdmean_trials(:,:,:,lll,:) = tempsum/numreps;
-end
-
-% Normalizing PSDs
-psdmean_norm = psdmean_trials;
-
-for p = 1:numtasks
-    tempsum = 0;
-    for lll =1:numstimuli
-        tempsum = tempsum + squeeze(psdmean_norm(:,:,p,lll,:));
-    end
-    tempsum = tempsum/22;
-    for lll = 1:numstimuli
-        psdmean_norm(:,:,p,lll,:) = log(squeeze(psdmean_norm(:,:,p,lll,:))./(tempsum));
-    end
-end
-
-%% PCA
-total_psd = zeros(numtasks,numchannels*numstimuli,fupper);
-
-counter = 1;
-for p = 1:numtasks
-    for ccc = 1:numchannels
-        for lll = 1:numstimuli
-            for ppp = 1:fupper
-                total_psd(numtasks,counter,ppp) = [squeeze(psdmean_norm(1,ccc,p,lll,ppp))]';
-                if(isinf(total_psd(numtasks,counter,ppp)) | isnan(total_psd(numtasks,counter,ppp)))
-                    total_psd(numtasks,counter,ppp)=0;
-                end
-            end
-            counter = counter + 1;
-        end
-    end
-end
-
-[coeff,score,latent,~,explained,mu] = pca(squeeze(total_psd(2,:,:))');
-
-%% PCA plots
-score_length = size(score, 1);
-tx_vect= score(1:score_length, 1);
-plot(tx_vect,'r'); hold on;
-tx_vect= score(1:score_length, 2);
-plot(tx_vect,'b');
-tx_vect= score(1:score_length, 3);
-plot(tx_vect,'g'); 
-xlim([0 200]); ylim([-10 10]); hold off;
-
-
-%%
-% what we did:
-% - did a moving average of size 10 (to go from 2000 to 200)
-% - for each of the 66 trials, define time=0 based on the photodiode zero-crossing (leftward).
-%   then extract the epoch range [-.5 3.5]*fs from the broadband time-series and save it.
-%   note that these epochs no longer overlap a bit!
-%
-% outputs:
-% - <data> is epochtime x 3 subjects x 128 channels x 2 tasks x 6 trials x 24 stimuli
-%   - note that the chronological order of the trials is preserved.
-%   - note that stimulus #1 and #3 are not presented, so the data for these will be zeros.
-%
-% NOTICE HOW WE COMPUTE BB ON THE ENTIRE DATASET AT ONCE!  otherwise, you'll get weird run to run differences.
-
-
-%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%% QUICK LOOK AT SOME BB TIMECOURSES TO CHECK SANITY
-
-figureprep([100 100 900 300],1); hold on; plot(log(smooth(bbtemp{1,46},2000)));straightline(theseOnsets,'v','m-');straightline(theseOnsets+0.1*fsorig,'v','g-');  %subject YBA
-% for ccc = 1:numchannels
-%     figureprep([100 100 900 300],1); hold on; plot(recdata{1,ccc}); straightline(onsetpoints,'v','m-');hold off;
-%     figurewrite(sprintf('~/inout/rawdata/channel%03d',ccc));
-% end
-figureprep([100 100 900 300],1); plot(bb_bptemp{1,46});
-figureprep([100 100 900 300],1); hold on; plot(recdata{1,46});
-xlim([15000 30000]);straightline(theseOnsets,'v','m-');straightline(theseOnsets+0.1*fsorig,'v','g-');
-figureprep([100 100 900 300],1);plot(10*log10(squeeze(psdmean_trials(1,46,2,4,:))));xlim([0 200])
-figurewrite('bb_subjYBA_ch46');
-figureprep([100 100 900 300],1); plot(log(smooth(bbtemp{1,78},2000)));  %subject YBA
-figurewrite('bb_subjYBA_ch78');
-%figureprep([100 100 900 300],1); plot(log(smooth(bbtemp{3,86},2000)));
-%figureprep([100 100 900 300],1); plot(log(smooth(bbtemp{3,108},2000)));
-
-figure;plot(mean(catcell(2,bbtemp(1,:)),2));
-figurewrite('mean');
-%figure;plot(mean(catcell(2,bbtemp(3,:)),2));
-
-
-for ccc = 1:numchannels
-    semilogy((squeeze(psdmean_trials(1,ccc,2,4,:))),'b');
-    hold on;
-end
-
-%channel maps
-for p = 1:numtasks
-    for lll = 1:numstimuli
-        figureprep([100 100 900 300],1);
-		clims = [-250 250];
-        imagesc((squeeze(datamean_trials(:,1,:,p,lll)))',clims);
-        colorbar;
-        set(gca,'XTick',0:1000:8000)
-        set(gca,'XTickLabel',-0.5:0.5:3.5)
-        figurewrite(sprintf('task%d_stim%02d',p,lll),[],[],'~/inout/channelmaps');
-    end
-end
-
-%RTPO_3_4 plots
-for p = 1:numtasks
-    for lll = 1:numstimuli
-        figureprep([100 100 1800 300],1);
-        subplot(2,2,[1,2]);
-        plot((squeeze(datamean_trials(:,1,73,p,lll)))','r');
-        hold on;
-        plot((squeeze(datamean_trials(:,1,74,p,lll)))','g');
-        hold off;
-        set(gca,'XTick',0:1000:8000)
-        set(gca,'XTickLabel',-0.5:0.5:3.5)
-        subplot(2,2,3);
-        semilogy((squeeze(psdmean_trials(1,73,p,lll,:))),'r');
-        hold on;
-        semilogy((squeeze(psdmean_trials(1,74,p,lll,:))),'g');
-        hold off;
-        subplot(2,2,4);
-        plot((squeeze(psdmean_norm(1,73,p,lll,:))),'r');
-        hold on;
-        plot((squeeze(psdmean_norm(1,74,p,lll,:))),'g');
-        hold off;
-        figurewrite(sprintf('task%d_stim%02d',p,lll),[],[],'~/inout/RTPO_3_4');
-    end
-end
-
-% psdmean_trials Plot
-semilogy((squeeze(psdmean_trials(1,76,2,3,:))),'m');
-hold on;
-semilogy((squeeze(psdmean_trials(1,76,2,18,:))),'g');
-semilogy((squeeze(psdmean_trials(1,76,2,19,:))),'b');
-semilogy((squeeze(psdmean_trials(1,76,2,5,:))),'r');
+subplot(2,4,1)
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,6),5))));
+ylim([-50 350]); xlim([0 800]); hold on; 
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,7),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,8),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,9),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,4),5))));
 hold off;
-lgd = legend('3','5','8','100');
-title(lgd,'Word Contrast')
+title('WP_F');
 
-% psdmean_norm plot
-figureprep([100 100 900 300],1);
-hold on;
-plot((squeeze(psdmean_norm(1,76,2,17,:))),'m');
-plot((squeeze(psdmean_norm(1,76,2,18,:))),'g');
-plot((squeeze(psdmean_norm(1,76,2,19,:))),'b');
-plot((squeeze(psdmean_norm(1,76,2,5,:))),'r');
+subplot(2,4,5)
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,6),5))));
+ylim([-50 350]); xlim([0 800]); hold on; 
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,7),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,8),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,9),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,4),5))));
 hold off;
-lgd = legend('3','5','8','100');
-title(lgd,'Word Contrast')
+title('WP_C');
 
-% OLD:
-%         % visualize for sanity
-%         figureprep([100 100 1000 300]); hold on;
-%         plot(bb);
-%         figurewrite(sprintf('ch%d',chantoload),[],[],sprintf('~/inout/bb_subj%d/file%d',zzz,p));
+subplot(2,4,2)
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,10),5))));
+ylim([-50 350]); xlim([0 800]); hold on; 
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,11),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,12),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,13),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,5),5))));
+hold off;
+title('FP_F');
 
-%%
-tempsum = recdata{1,47};
-for i = 1: size(tempsum,1)
-    if(isinf(tempsum(i,1)) | isnan(tempsum(i,1)))
-                    tempsum(i,1)=0;
-    end
-end
-recdata{1,47} = tempsum;
+subplot(2,4,6)
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,10),5))));
+ylim([-50 350]); xlim([0 800]); hold on; 
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,11),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,12),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,13),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,5),5))));
+hold off;
+title('FP_C');
+
+subplot(2,4,3)
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,14),5))));
+ylim([-50 350]); xlim([0 800]); hold on; 
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,15),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,16),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,4),5))));
+hold off;
+title('WC_F');
+
+subplot(2,4,7)
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,14),5))));
+ylim([-50 350]); xlim([0 800]); hold on;  
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,15),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,16),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,4),5))));
+hold off;
+title('WC_C');
+
+subplot(2,4,4)
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,17),5))));
+ylim([-50 350]); xlim([0 800]); hold on; 
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,18),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,19),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,1,:,5),5))));
+hold off;
+title('FC_F');
+
+subplot(2,4,8)
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,17),5))));
+ylim([-50 350]); xlim([0 800]); hold on; 
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,18),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,19),5))));
+plot((squeeze(mean(bb_data(:,1,ccc,2,:,5),5))));
+hold off;
+title('FC_C');
