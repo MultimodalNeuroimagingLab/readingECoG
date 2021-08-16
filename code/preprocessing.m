@@ -109,7 +109,7 @@ for zzz=1:length(subjects)
     fs0 = pd.analogInfos.SampleRate; assert(fs0==fsorig);
     
     % get good time region (rough pass)
-    numsam = length(pd.analogTraces);
+    numsam = length(pd.analogTraces); 
     [~,theseOnsets] = findpeaks(-pd.analogTraces,'MinPeakDistance',3*fsorig,'MinPeakHeight',150);  % if black is low, then - means find pos deflections
     theseOnsets = theseOnsets(onsetix{zzz}{p});  % this is not quite right (finding peaks), but roughly right
     
@@ -176,7 +176,7 @@ for zzz=1:length(subjects)
              130 150;
              150 170];   %% HACK OUT
 %             190 210];
-    bb = ecog_extractBroadband(collectdata,fsorig,[],bands);  % NOTE: WE DO WHOLE EXPERIMENT AT ONCE TO ENSURE EQUAL SCALING ISSUE...
+    bb = ieeg_getHilbert(collectdata,{[70 90] [90 110] [130 150] [150 170]}, fsorig, 'power');  % NOTE: WE DO WHOLE EXPERIMENT AT ONCE TO ENSURE EQUAL SCALING ISSUE...
                                                               % ecog_extractBroadband: mean after hilbert; power; geomean (ECoG utilities by JW_NYU)
  
     bb_bp = ieeg_butterpass(collectdata, [70 170], fsorig);   % bandpass; amplitude (mnl_ieegBasics by DH)
@@ -260,7 +260,7 @@ psd_avg = squeeze(mean(reshape(psd_on,numchannels,numtasks*numreps*numstimuli,fu
 %% PLOT CHANNEL AVG TIME AND FREQUENCY RESPONSE
 
 clims = [0 50];
-figure,imagesc(bb_data_avg,clims);
+figure,imagesc(bb_data_avg, [0, 1e25]);
 colorbar;
 set(gca,'XTick',0:100:800)
 set(gca,'XTickLabel',-0.5:0.5:3.5)
