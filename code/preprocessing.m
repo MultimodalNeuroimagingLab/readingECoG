@@ -82,7 +82,7 @@ repmat({'X'},[1 32]) ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREP DATA
 
 % do it
-onsets = zeros(numtrials,length(subjects),numruns);  % indices of data points at which trials occur
+
 data = zeros(length(epochtime),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
 bb_data = zeros(length(epochtime_bb),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
 nb_data = zeros(length(epochtime_bb),length(subjects),numchannels,numtasks,numreps,numstimuli,'single');
@@ -93,7 +93,13 @@ psd_off = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,
 stimcounter = zeros(length(subjects),numchannels,numtasks,numstimuli);  % number of trials encountered so far
 recdata = {};
 bbtemp = {};
+
+
+%% Finding epochs
+
+onsets = zeros(numtrials,length(subjects),numruns);  % indices of data points at which trials occur
 onsetpoints = {};
+
 
 for zzz=1:length(subjects)
 
@@ -131,7 +137,7 @@ for zzz=1:length(subjects)
     figureprep([100 100 1000 300]); hold on;
     plot(pd.analogTraces);
     straightline(theseOnsets,'v','m-');
-    figurewrite(sprintf('photodiode_subj%d_file%d',zzz,p),[],[],'~/inout/photodiode');
+    figurewrite(sprintf('photodiode_subj%d_file%d',zzz,p),[],[],'inout/photodiode');
 
     % record
     onsets(:,zzz,p) = theseOnsets;
@@ -140,9 +146,18 @@ for zzz=1:length(subjects)
   end
   onsetpoints{zzz} = single(temponsetpoints);
   
+
+end
+
+%%  Channel Analysis
+
+
+for zzz=1:length(subjects)
   % process each channel
   for ccc=1:numchannels
     % init
+    
+    sprintf('Subject%d_%03d',zzz,ccc)
     collectdata = [];
     bblengths = [];
     
@@ -196,6 +211,8 @@ for zzz=1:length(subjects)
     theta = [4 7];
     delta = [0 4];
     
+    %check the bb influence on nb
+    
     bb = ecog_extractBroadband(collectdata,fsorig,[],bands);  % NOTE: WE DO WHOLE EXPERIMENT AT ONCE TO ENSURE EQUAL SCALING ISSUE...
                                                               % ecog_extractBroadband: mean after hilbert; power; geomean (ECoG utilities by JW_NYU)
     
@@ -228,15 +245,18 @@ for zzz=1:length(subjects)
 
       % extract epochs (trials)
       for ttt=1:size(onsets,1)
+          
+        % indices 
         ix_bb = onsets(ttt,zzz,p) + (epochrng(1)*fsorig : fsjump : epochrng(2)*fsorig);  % NOTE: the 10 makes things nice and even, and hits 0
         ix_raw = onsets(ttt,zzz,p) + (epochrng(1)*fsorig : epochrng(2)*fsorig);	% channel analysis	 (t = -0.5:3.5 s; f = 2 kHz)
-        on_samples  = length(epochrng(1)*fsorig:0*fsorig) : length(epochrng(1)*fsorig:0*fsorig) + 2 * fsorig - 1;  % samples corresponding to on stimuli
-        %off_samples = cat (2, 1 : length(epochrng(1)*fsorig:0*fsorig)-1, length(epochrng(1)*fsorig:0*fsorig) + 2 * fsorig : 4*fsorig);  % samples corresponding to off-stimuli-period
-        off_samples = 1 : length(epochrng(1)*fsorig:0*fsorig)-1;
+        on_samples  = length(epochrng(1)*fsorig:0*fsorig) : length(epochrng(1)*fsorig:0*fsorig) + 2 * fsorig - 1;  % samples corresponding to on stimuli (0 - 2 s)
+        %off_samples = cat (2, 1 : length(epochrng(1)*fsorig:0*fsorig)-1, length(epochrng(1)*fsorig:0*fsorig) + 2 * fsorig : 4*fsorig);  
+        off_samples = 1 : length(epochrng(1)*fsorig:0*fsorig)-1;  % samples corresponding to off-stimuli-period (-0.5 - 0 s)
+        
         temp_bb = bb(sum(bblengths(1:p-1)) + ix_bb);			% bb analysis
         temp_nb = nb(sum(bblengths(1:p-1)) + ix_bb);            % nb analysis
-        temp_beta = betab(sum(bblengths(1:p-1)) + ix_bb);            % beta band analysis
-        temp_alpha = alphab(sum(bblengths(1:p-1)) + ix_bb);            % alpha band analysis
+        temp_beta = betab(sum(bblengths(1:p-1)) + ix_bb);       % beta band analysis
+        temp_alpha = alphab(sum(bblengths(1:p-1)) + ix_bb);     % alpha band analysis
         
 		temp_raw = collectdata(sum(bblengths(1:p-1)) + ix_raw);	% raw analysis
 %         if any(isnan(temp_bb))
@@ -247,7 +267,7 @@ for zzz=1:length(subjects)
 % 		  temp_raw(:) = badval;
 %         end
         
-		stimco = stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;   % a1.stimclassrec tells us the stim number (1-24)
+		stimco = stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt))+1;   % a1.stimclassrec tells us the stim number (1-24)
         
         bb_data(:,zzz,ccc,mod2(p,2), stimco, ...
              a1.stimclassrec(ttt)) = temp_bb;
@@ -257,8 +277,10 @@ for zzz=1:length(subjects)
              a1.stimclassrec(ttt)) = temp_beta;
         alpha_data(:,zzz,ccc,mod2(p,2), stimco, ...
              a1.stimclassrec(ttt)) = temp_alpha;
+        
         data(:,zzz,ccc,mod2(p,2), stimco, ...
              a1.stimclassrec(ttt)) = temp_raw;
+        
         [psdvar,f] = pwelch(temp_raw(on_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
          %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
         psd_on(zzz,ccc,mod2(p,2), stimco, ...
@@ -266,8 +288,9 @@ for zzz=1:length(subjects)
         [psdvar,f] = pwelch(temp_raw(off_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
         psd_off(zzz,ccc,mod2(p,2), stimco, ...
              a1.stimclassrec(ttt),:) = psdvar(1:fupper);
-		stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) = ...
-          stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
+		
+        stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) = ...
+           stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
       end
     
     end
@@ -276,93 +299,141 @@ end
 
 %% CHANNEL AVG TIME AND FREQUENCY RESPONSE
 
-psd_baseline = squeeze(mean(reshape(psd_off,length(subjects)*numchannels*numtasks*numreps*numstimuli,fupper),1));
+psd_avg = squeeze(mean(reshape(psd_on,numchannels*length(subjects),numtasks*numreps*numstimuli,fupper),2));
+psd_baseline = squeeze(mean(reshape(psd_off,numchannels*length(subjects),numtasks*numreps*numstimuli,fupper),2));
+
 bb_data_avg = mean(reshape(bb_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
 nb_data_avg = mean(reshape(nb_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
 alpha_data_avg = mean(reshape(alpha_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
 beta_data_avg = mean(reshape(beta_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
-data_avg = mean(reshape(data,length(epochtime),numchannels,length(subjects)*numtasks*numreps*numstimuli),3)';
-psd_avg = squeeze(mean(reshape(psd_on,numchannels,length(subjects)*numtasks*numreps*numstimuli,fupper),2));
+data_avg = mean(reshape(data,length(epochtime),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
 
 %% PLOT CHANNEL AVG TIME AND FREQUENCY RESPONSE
 
 clims = [0 50];
-figure,imagesc(bb_data_avg,[0 50]);
+figure,imagesc(bb_data_avg);
 colorbar;
 set(gca,'XTick',0:100:800)
 set(gca,'XTickLabel',-0.5:0.5:3.5)
 
-figure,imagesc(data_avg);
+% EP odd-sub1/even-sub2
+figure,imagesc(data_avg,[-50,50]);
 colorbar;
 set(gca,'XTick',0:1000:8000)
 set(gca,'XTickLabel',-0.5:0.5:3.5)
 
-plot(data_avg(75,:))
+%%
+for ccc = 111:118
+    figure,plot(data_avg(ccc*2,:))
+end
 hold on;
-plot(data_avg(76,:))
-plot(data_avg(77,:))
-plot(data_avg(78,:))
+plot(data_avg(76*2,:))
+plot(data_avg(77*2,:))
+plot(data_avg(78*2,:))
 hold off;
+set(gca,'XTick',0:1000:8000)
+set(gca,'XTickLabel',-0.5:0.5:3.5)
 
 %% Plot normalized PSD
 
-ccc = 75;
-plot((normalize(10*log10(psd_avg(ccc,:)) - 10*log10(psd_baseline))))
+for ccc = 111:118
+    figure,semilogy(psd_avg(ccc*2,:),'r')
+    hold on;
+    semilogy(psd_baseline(ccc*2,:),'k')
+    hold off;
+end
+plot((normalize(10*log10(psd_avg(ccc,:)) - 10*log10(psd_baseline(ccc,:)))))
 
-%% Normalize Data
+%% Good Channels(Visually Identified)
 
 
+%gcc = sort(horzcat((9:11)*2-1, (44:46)*2-1, (74:78)*2-1, (3)*2, (20:22)*2, (86:87)*2, (108:110)*2));
 
+gcc = {horzcat((9:11), (44:46), (74:78)), horzcat((3), (20:22), (86:87), (108:110)) };
 %% Stimuli Timecourse
 
 stimgroups  = {[6 7 8 9 4]   [10 11 12 13 5] [14 15 16 4] [17 18 19 5]};% [20 21 22 10] [2 23 24]};
 stimgrnames = {'Word Phase' 'Face Phase'    'Word Con'   'Face Con'};%   'Noise Con'   'Other'};
+stimresp_f = zeros(length(epochtime_bb),length(subjects),20,length(stimgroups),5);
+stimresp_c = zeros(length(epochtime_bb),length(subjects),20,length(stimgroups),5);
+counter = 1;
 
 for zzz = 1:length(subjects)
    
-    for ccc = 1:numchannels
+    for ccc = gcc{zzz}
         
         figureprep([100 100 1700 1100]);
     
         for stimg = 1:length(stimgroups)
             
+            temp = [];
             subplot(2,length(stimgroups),stimg)
             for stimc = 1:length(stimgroups{stimg})
                 
+%                 temp = [temp smooth(squeeze(mean(bb_data(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40)];
+
+                stimresp_f(:,zzz,counter,stimg,stimc) = smooth(squeeze(mean(bb_data(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40);
+                
                 plot(smooth(squeeze(mean(bb_data(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40));
-                %ylim([-50 350]); 
-                xlim([0 800]);
-                set(gca,'XTick',0:100:800); set(gca,'XTickLabel',-0.5:0.5:3.5);
+                ylim([-50 200]); 
+                xlim([0 400]);
+                set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
                 hold on;
                 
             end
+            %stimresp_f{stimg,stimc} = temp;    
             hold off;
             title(sprintf('%s_F',stimgrnames{stimg}));
             
+            temp = [];
             subplot(2,length(stimgroups),length(stimgroups)+stimg)
             for stimc = 1:length(stimgroups{stimg})
                 
+                %temp = [temp smooth(squeeze(mean(bb_data(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40)];
+                stimresp_c(:,zzz,counter,stimg,stimc) = smooth(squeeze(mean(bb_data(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40);
                 plot(smooth(squeeze(mean(bb_data(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40));
-                %ylim([-50 350]); 
-                xlim([0 800]);
-                set(gca,'XTick',0:100:800); set(gca,'XTickLabel',-0.5:0.5:3.5);
+                ylim([-50 200]); 
+                xlim([0 400]);
+                set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
                 hold on;
                 
             end
+            %stimresp_c{stimg} = temp;
             hold off;
             title(sprintf('%s_C',stimgrnames{stimg}));
             
         end
         figurewrite(sprintf('Subj%d_ch%03d',zzz,ccc),[],[],'stimtimecourse');
         
+        counter = counter+1;
+        
     end
     
 end
 
+%%
 
 
-
-
+for stimg = 1:length(stimgroups)
+    
+    figureprep([100 100 1700 1100]);
+    
+    for stimc = 1:length(stimgroups{stimg})
+        
+        subplot(1,length(stimgroups{stimg}),stimc);
+        plot(mean(mean(stimresp_f(:,:,:,stimg,stimc),2),3));
+        ylim([0 20]); 
+        xlim([0 400]);
+        set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
+        hold on;
+        plot(mean(mean(stimresp_c(:,:,:,stimg,stimc),2),3));
+        hold off;
+        legend('F','C');    
+    
+    end
+    title(sprintf('%s',stimgrnames{stimg}));
+    figurewrite(sprintf('%s',stimgrnames{stimg}),[],[],'FvsC');
+end
 %%
 % what we did:
 % - did a moving average of size 10 (to go from 2000 to 200)
