@@ -1,0 +1,2 @@
+name	type	units	low_cutoff	high_cutoff	status	status_description	reference	group	sampling_freq	description	notch	
+required	required	required	required	required	optional	optional	optional	optional	optional	optional	optional

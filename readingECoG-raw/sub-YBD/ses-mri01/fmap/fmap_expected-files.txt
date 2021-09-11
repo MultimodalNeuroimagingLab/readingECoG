@@ -1,0 +1,31 @@
+THIS FILE SHOULD NOT BE IN ANY FOLDER, JUST FOR TEMPLATES PURPOSES
+Phase difference Fieldmap data can be linked to a specific scan(s) it was acquired for by filling the IntendedFor field in the corresponding JSON file. 
+The IntendedFor field is OPTIONAL and in case the fieldmaps do not correspond to any particular scans it does not have to be filled.
+
+PHASE DIFFERENCE image and at least one magnitude image
+dataset/sub-template/ses-template01/fmap/
+	sub-template_ses-template01_[acq-<label>][_run-<index>]_phasediff.nii.gz
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_phasediff.json
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_magnitude1.nii.gz
+OPTIONALsub-template_ses-template01_[acq-<label>][_run-<index>]_magnitude2.nii.gz
+
+TWO PHASE images and TWO MAGNITUDE images
+dataset/sub-template/ses-template01/fmap/
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_phase1.nii.gz
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_phase1.json
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_phase2.nii.gz
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_phase2.json
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_magnitude1.nii.gz
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_magnitude2.nii.gz
+
+REAL FIELDMAP
+dataset/sub-template/ses-template01/fmap/
+        sub-template_ses-template01_[acq-<label>][_run-<index>]_magnitude.nii.gz
+	sub-template_ses-template01_[acq-<label>][_run-<index>]_fieldmap.nii.gz
+	sub-template_ses-template01_[acq-<label>][_run-<index>]_fieldmap.json
+
+MULTIPLE phase ENCONDED DIRECTIONS (pepolar)
+dataset/sub-template/ses-template01/fmap/
+	sub-template_ses-template01_[acq-<label>][_ce-<label>]_dir-<label>[_run-<index>]_epi.nii.gz
+        sub-template_ses-template01_[acq-<label>][_ce-<label>]_dir-<label>[_run-<index>]_epi.json
+

@@ -1,0 +1,21 @@
+{
+    "filename": {
+        "Description": "Name of the file"
+    },
+    "acq_time": {
+        "Description": "Acquisition time",
+        "Units": "YYYY-MM-DDThh:mm:ss"
+    },
+    "day_aftersurgery": {
+        "Description": "How many days after surgery the data were capture",
+    },
+    "after_seizure": {
+        "Description": "Time after a seizure happened",
+    },
+    "misc_comments": {
+        "Description": "Miscellaneous comments on study, interview, methodology relevant to this form data"
+    },
+    "scan_nr": {
+        "Description": "Description of the order of the scans within the same session"
+    }
+}

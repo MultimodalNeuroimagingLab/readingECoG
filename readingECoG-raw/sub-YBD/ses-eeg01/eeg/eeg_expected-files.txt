@@ -1,0 +1,40 @@
+THIS FILE SHOULD NOT BE IN ANY FOLDER, JUST FOR TEMPLATES PURPOSES
+dataset/sub-template/ses-template01/eeg/
+	sub-template_ses-template01_task-<label>[_run-<index>]_eeg.<manufacturer_specific_extension>
+        sub-template_ses-template01_task-<label>[_run-<index>]_eeg.json
+	sub-template_ses-template01_task-<label>[_run-<index>]_channels.tsv
+	sub-template_ses-template01_acq-<label>[_run-<index>]_electrodes.tsv
+	sub-template_ses-template01_acq-<label>_coordsystem.json
+	sub-template_ses-template01_acq-<label>_photo.jpg
+
+*_eeg.manufacturer_specific_extension> is REQUIRED
+*_eeg.json is REQUIRED
+*_channels.tsv is RECOMMENDED, Channel names should furthermore appear in the table in the same order they do in the EEG data file.
+*_electrodes.tsv is OPTIONAL
+*_coordsystem.json is REQUIRED IF the optional *_electrodes.tsv is specified.
+*_photo.jpg is OPTIONAL
+
+EEG data must be stored in one of the followeing formats:
+-European data format (.edf)
+-BrainVision Core Data Format (.vhdr, .vmrk, .eeg)
+-EEGLAB (.set and .fdt files) used by MATLAB toolbox
+-Biosemi data format (.bdf)
+
+For field "type" in *_channels.tsv file:
+Keyword	Description
+AUDIO	Audio signal 
+EEG	Electroencephalogram channel 
+EOG	Generic electrooculogram (eye), different from HEOG and VEOG 
+ECG	Electrocardiogram (heart) 
+EMG	Electromyogram (muscle) 
+EYEGAZE	Eye tracker gaze 
+GSR	Galvanic skin response 
+HEOG	Horizontal EOG (eye) 
+MISC	Miscellaneous 
+PUPIL	Eye tracker pupil diameter 
+REF	Reference channel 
+RESP	Respiration 
+SYSCLOCK	System time showing elapsed time since trial started 
+TEMP	Temperature 
+TRIG	System triggers 
+VEOG	Vertical EOG (eye) 

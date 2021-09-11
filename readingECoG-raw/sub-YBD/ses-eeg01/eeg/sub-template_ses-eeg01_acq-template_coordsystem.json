@@ -1,0 +1,15 @@
+{
+    "IntendedFor": "Optional Relative path to associate the electrodes, landmark and fiducials to an MRI/CT",
+    "EEGCoordinateSystem": "REQUIRED",
+    "EEGCoordinateUnits": "REQUIRED",
+    "EEGCoordinateSystemDescription": "RECOMMENDED",
+    "FiducialsDescription": "OPTIONAL",
+    "FiducialsCoordinate": "RECOMMENDED",
+    "FiducialsCoordinateSystem": "RECOMMENDED",
+    "FiducialsCoordinateUnits": "RECOMMENDED",
+    "FiducialsCoordinateSystemDescription": "RECOMMENDED",
+    "AnatomicalLandmarkCoordinates": "RECOMMENDED",
+    "AnatomicalLandmarkCoordinateSystem": "RECOMMENDED",
+    "AnatomicalLandmarkCoordinateUnits": "REQUIRED", 
+    "AnatomicalLandmarkCoordinateSystemDescription": "REQUIRED"
+}

@@ -16,6 +16,10 @@ desktop.ini
 BCMecog/
 temp/
 data/
+misc/
+References/
+readingECoG-raw/
+
 
 # No matlab metafiles
 *.m~

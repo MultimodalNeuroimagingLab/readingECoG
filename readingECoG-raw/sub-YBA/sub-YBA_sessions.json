@@ -1,0 +1,31 @@
+{
+  "session_id": {
+    "Description": "Session identification tag"
+  },
+  "acq_time": {
+    "Description": "Acquisition time",
+    "Units": "YYYY-MM-DDThh:mm:ss"
+  },
+  "modality": {
+    "Description": "Imaging modality used",
+    "Levels": {
+      "anat": "Magnetic Resonance Imaging, anatomy/structural imaging data",
+      "dwi": "Magnetic Resonance Imaging, diffusion-weighted imaging data",
+      "fmap": "Magnetic Resonance Imaging, fieldmap data",
+      "func": "Magnetic Resonance Imaging, task/funcional imaging data",
+      "eeg": "Electroencephalography imaging data",
+      "ieeg": "intracranial Electroencephalography imaging data"
+    }
+  },
+  "task": {
+    "Description": "Set of structured activities performed by the participant",
+    "Levels": {
+      "rest": "subject resting, no stimulation",
+      "fixation": "visualizing the fixation cross of different colors",
+      "categorization": "visual classification of stimuli into different categories"
+    }
+  },
+  "misc_comments": {
+    "Description": "Miscellaneous comments on study, interview, methodology relevant to this form data"
+  }
+}
