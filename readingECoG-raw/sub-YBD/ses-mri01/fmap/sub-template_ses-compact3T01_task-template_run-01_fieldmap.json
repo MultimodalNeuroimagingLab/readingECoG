@@ -1,4 +1,0 @@
-{
-	"Units": "REQUIRED", 
-	"IntendedFor": "OPTIONAL i.e. func/sub-template_ses-template01_task-template_run-template01_contrast-label.nii.gz"
-}
