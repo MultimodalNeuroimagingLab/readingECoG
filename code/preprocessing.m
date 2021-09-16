@@ -155,6 +155,11 @@ end
 
 
 for zzz=1:length(subjects)
+    
+  % get behavioral files
+  files = matchfiles(sprintf('../data/%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
+  assert(length(files)==length(subjectfilenums{zzz}));
+  
   % process each channel
   for ccc=1:numchannels
     % init
@@ -195,7 +200,7 @@ for zzz=1:length(subjects)
    
     % TOTAL HACK SPIKE (detect later!)
     if zzz==1   %subject YBA
-      badrng = 1.072 * 10^6 : 1.09 * 10^6; % data seems to be corrupted in this time range for all channels
+      badrng = 1.072 * 10^6 : 1.096 * 10^6; % data seems to be corrupted in this time range for all channels
       %bb(badrng) = NaN;  %%median(bb(setdiff(1:length(bb),badrng)));
       collectdata(badrng) = NaN;
       %collectdata(badrng) = nanmedian(collectdata);
@@ -212,7 +217,7 @@ for zzz=1:length(subjects)
     beta  = [12 30];
     alpha = [8 12];
     theta = [4 7];
-    delta = [0 4];
+    delta = [1 4];
     
     %check the bb influence on nb
     
@@ -295,13 +300,13 @@ for zzz=1:length(subjects)
         data(:,zzz,ccc,mod2(p,2), stimco, ...
              a1.stimclassrec(ttt)) = temp_raw;
         
-        [psdvar,f] = pwelch(temp_raw(on_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
-         %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
-        psd_on(zzz,ccc,mod2(p,2), stimco, ...
-             a1.stimclassrec(ttt),:) = psdvar(1:fupper);
-        [psdvar,f] = pwelch(temp_raw(off_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
-        psd_off(zzz,ccc,mod2(p,2), stimco, ...
-             a1.stimclassrec(ttt),:) = psdvar(1:fupper);
+%         [psdvar,f] = pwelch(temp_raw(on_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
+%          %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
+%         psd_on(zzz,ccc,mod2(p,2), stimco, ...
+%              a1.stimclassrec(ttt),:) = psdvar(1:fupper);
+%         [psdvar,f] = pwelch(temp_raw(off_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
+%         psd_off(zzz,ccc,mod2(p,2), stimco, ...
+%              a1.stimclassrec(ttt),:) = psdvar(1:fupper);
 		
         stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) = ...
            stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
@@ -337,8 +342,8 @@ set(gca,'XTick',0:1000:8000)
 set(gca,'XTickLabel',-0.5:0.5:3.5)
 
 %%
-for ccc = 111:118
-    figure,plot(data_avg(ccc*2,:))
+for ccc = 41
+    figure,plot(data_avg(ccc*2-1,:))
 end
 hold on;
 plot(data_avg(76*2,:))
@@ -350,16 +355,19 @@ set(gca,'XTickLabel',-0.5:0.5:3.5)
 
 %% Plot normalized PSD
 
-for ccc = 111:118
-    figure,semilogy(psd_avg(ccc*2,:),'r')
+for ccc = 41
+    figure,semilogy(psd_avg(ccc*2-1,:),'r')
     hold on;
-    semilogy(psd_baseline(ccc*2,:),'k')
+    semilogy(psd_baseline(ccc*2-1,:),'k')
     hold off;
 end
 plot((normalize(10*log10(psd_avg(ccc,:)) - 10*log10(psd_baseline(ccc,:)))))
 
 %% Good Channels(Visually Identified)
 
+%EVCgcc = {horzcat(74:75),horzcat(43:44, 108)};
+
+%LVCgcc = {horzcat(76:78),horzcat(45:46, 109:110)};
 
 %gcc = sort(horzcat((9:11)*2-1, (44:46)*2-1, (74:78)*2-1, (3)*2, (20:22)*2, (86:87)*2, (108:110)*2));
 
@@ -383,7 +391,7 @@ for zzz = 1:length(subjects)
         for stimg = 1:length(stimgroups)
             
             temp = [];
-            subplot(3,length(stimgroups),stimg)
+            subplot(4,length(stimgroups),stimg)
             for stimc = 1:length(stimgroups{stimg})
                 
 %                 temp = [temp smooth(squeeze(mean(bb_data(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40)];
@@ -403,7 +411,7 @@ for zzz = 1:length(subjects)
             legend(stimleg{stimg});
             
             temp = [];
-            subplot(3,length(stimgroups),length(stimgroups)+stimg)
+            subplot(4,length(stimgroups),length(stimgroups)+stimg)
             for stimc = 1:length(stimgroups{stimg})
                 
                 %temp = [temp smooth(squeeze(mean(bb_data(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40)];
@@ -421,11 +429,11 @@ for zzz = 1:length(subjects)
             legend(stimleg{stimg});
             
             temp = [];
-            subplot(3,length(stimgroups),2*length(stimgroups)+stimg)
+            subplot(4,length(stimgroups),2*length(stimgroups)+stimg)
             for stimc = 1:length(stimgroups{stimg})-1
                 stimresp_g(zzz,ccc,1,stimg,stimc) = mean(mean(bbdata_br(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5),1);
                 plot([stimc,stimc+1],[mean(mean(bbdata_br(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5),1),mean(mean(bbdata_br(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc+1)),5),1)],'r-', 'LineWidth', 2);
-                ylim([-50 200]);
+                ylim([-50 100]);
                 hold on;
                 stimresp_g(zzz,ccc,2,stimg,stimc) = mean(mean(bbdata_br(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1);
                 plot([stimc,stimc+1],[mean(mean(bbdata_br(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1),mean(mean(bbdata_br(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc+1)),5),1)],'b-', 'LineWidth', 2);
@@ -438,6 +446,16 @@ for zzz = 1:length(subjects)
             hold off;
             title(sprintf('%s_G',stimgrnames{stimg}));
             legend('F','C')
+            
+            temp = [];
+            subplot(4,length(stimgroups),3*length(stimgroups)+stimg)
+            for stimc = 1:length(stimgroups{stimg})
+                bar(stimc,nanmean(reactiontime(zzz,:,stimgroups{stimg}(stimc)),2));
+                hold on;
+            end
+            hold off;
+            title(sprintf('%s_t_reaction',stimgrnames{stimg}));
+            legend(stimleg{stimg});
             
         end
         figurewrite(sprintf('Subj%d_ch%03d',zzz,ccc),[],[],'stimtimecourse');
@@ -459,7 +477,7 @@ for stimg = 1:length(stimgroups)
         
         subplot(3,length(stimgroups{stimg}),stimc);
         plot(mean(mean(stimresp_f(:,1,7:11,stimg,stimc),2),3));
-        ylim([0 75]); 
+        ylim([0 50]); 
         xlim([0 400]);
         set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
         hold on;
@@ -467,10 +485,12 @@ for stimg = 1:length(stimgroups)
         hold off;
         legend('F','C');
         
-        subplot(3,length(stimgroups{stimg}),length(stimgroups{stimg})+stimc);
+        subplot(4,length(stimgroups{stimg}),length(stimgroups{stimg})+stimc);
         plot(mean(mean(stimresp_c(:,1,7:11,stimg,stimc),2),3)-mean(mean(stimresp_f(:,1,7:11,stimg,stimc),2),3));
-        ylim([0 75]); 
+        ylim([0 50]); 
         xlim([0 400]);
+        [h,p,ci,stats] = ttest2(mean(mean(stimresp_c(:,1,7:11,stimg,stimc),2),3),mean(mean(stimresp_f(:,1,7:11,stimg,stimc),2),3));
+        title(num2str([h,p]));
         set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
     end
     
@@ -479,13 +499,20 @@ for stimg = 1:length(stimgroups)
     for stimc = 1:length(stimgroups{stimg})-1
         
         plot([stimc,stimc+1],[mean(mean(stimresp_g(:,:,1,stimg,stimc),2),1),mean(mean(stimresp_g(:,:,1,stimg,stimc+1),2),1)],'r-', 'LineWidth', 2);
-        %ylim([-50 200]);
+        ylim([-50 100]);
         hold on;
         plot([stimc,stimc+1],[mean(mean(stimresp_g(:,:,2,stimg,stimc),2),1),mean(mean(stimresp_g(:,:,2,stimg,stimc+1),2),1)],'b-', 'LineWidth', 2);
         hold on;
     end
     hold off;
     legend('F','C')
+    
+    subplot(3,length(stimgroups),2*length(stimgroups{stimg})+2)
+    for stimc = 1:length(stimgroups{stimg})
+    bar(stimc,nanmean(nanmean(reactiontime(zzz,:,stimgroups{stimg}(stimc)),2),1));
+    hold on;
+    end
+    hold off;
     title(sprintf('%s',stimgrnames{stimg}));
     figurewrite(sprintf('%s',stimgrnames{stimg}),[],[],'FvsC');
 end
@@ -514,8 +541,16 @@ bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
 bbdata_pc = bsxfun(@rdivide,bb_data,nanmean(nanmean(bbdata_br(:, :, :, :, :, setdiff(1:24,[1 3])),6),4))*100;
 
 % baseline subtraction and normalization (per frequency)
-1`
 
+% for zzz = 
+%     for ccc = 
+%         for ttt =
+%             for stim
+    [S, f] = getWaveletSpectrogram(squeeze(mean(mean(data(:, 1, 75, 2, :, :),5),6)), fsorig, [1, 200]);     % Returns the Morlet (Gabor) wavelet transform (Spectrogram) for a signal - HH
+    %[S2, f] = getWaveletSpectrogram(squeeze(mean(mean(data(off_samples, 1, 75, 2, :, :),5),6)), fsorig, [1, 200]);   
+    figure,uimagesc(epochtime,f,S)
+    axis xy
+    plot(S)
 
 %% fmri type result - beta gain ....  Already included
 
@@ -531,5 +566,38 @@ for stimc = 1:length(stimgroups{j})-1
 end
 hold off;
 end
-%% 
+%% Reaction Time
+
+reactiontime = NaN * ones(length(subjects),numreps,numstimuli);
+stimc = zeros(length(subjects),numstimuli); 
+for zzz = 1:length(subjects)
+    files = matchfiles(sprintf('../data/%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
+    assert(length(files)==length(subjectfilenums{zzz}));
+    % process each run
+    for p=1:length(subjectfilenums{zzz})
+      if mod2(p,2)==2
+      % load behavioral file
+      a1 = load(files{p});
+      [keytimes,badtimes,keybuttons] = ptviewmoviecheck(a1.timeframes,a1.timekeys,0.25,'t',0.25,1);
+          for q=1:size(a1.trialpattern)  % 68 trials
+            ix = find(a1.trialpattern(q,:));
+            if ~isempty(ix)  % the first and last are blank
+                stimix = a1.classorder(ix);  % 1-24 (which stimulus are we on)
+                fpt = length(a1.timeframes)/size(a1.trialpattern,1);  % number of frames per trial
+                assert(fpt==40);
+                starttime = a1.timeframes((q-1)*fpt + 1);
+                endtime   = a1.timeframes((q-1)*fpt + fpt + 1);
+                okix = find(keytimes > starttime & keytimes < endtime);
+                stimc(zzz,stimix) = stimc(zzz,stimix) + 1;  % which trial number are we on now?
+                if ~isempty(okix)
+                    reactiontime(zzz,stimc(zzz,stimix),stimix) = 1000*(keytimes(okix(1)) - starttime);  % just take the first one
+                end
+            end
+          end  
+      end
+    end
+end
+
+
+
 
