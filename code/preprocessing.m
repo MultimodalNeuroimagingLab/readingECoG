@@ -476,20 +476,20 @@ for stimg = 1:length(stimgroups)
     for stimc = 1:length(stimgroups{stimg})
         
         subplot(3,length(stimgroups{stimg}),stimc);
-        plot(mean(mean(stimresp_f(:,1,7:11,stimg,stimc),2),3));
-        ylim([0 50]); 
+        plot(smooth(mean(mean(stimresp_f(:,:,:,stimg,stimc),2),3),40));
+        ylim([0 15]); 
         xlim([0 400]);
         set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
         hold on;
-        plot(mean(mean(stimresp_c(:,1,7:11,stimg,stimc),2),3));
+        plot(smooth(mean(mean(stimresp_c(:,:,:,stimg,stimc),2),3),40));
         hold off;
         legend('F','C');
         
-        subplot(4,length(stimgroups{stimg}),length(stimgroups{stimg})+stimc);
-        plot(mean(mean(stimresp_c(:,1,7:11,stimg,stimc),2),3)-mean(mean(stimresp_f(:,1,7:11,stimg,stimc),2),3));
-        ylim([0 50]); 
-        xlim([0 400]);
-        [h,p,ci,stats] = ttest2(mean(mean(stimresp_c(:,1,7:11,stimg,stimc),2),3),mean(mean(stimresp_f(:,1,7:11,stimg,stimc),2),3));
+        subplot(3,length(stimgroups{stimg}),length(stimgroups{stimg})+stimc);
+        plot(smooth(mean(mean(stimresp_c(:,:,:,stimg,stimc),2),3)./mean(mean(stimresp_f(:,:,:,stimg,stimc),2),3),40));
+        ylim([-2.5 10]); 
+        xlim([100 300]);
+        [h,p,ci,stats] = ttest2(mean(mean(stimresp_c(:,:,:,stimg,stimc),2),3),mean(mean(stimresp_f(:,:,:,stimg,stimc),2),3));
         title(num2str([h,p]));
         set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
     end
@@ -499,7 +499,7 @@ for stimg = 1:length(stimgroups)
     for stimc = 1:length(stimgroups{stimg})-1
         
         plot([stimc,stimc+1],[mean(mean(stimresp_g(:,:,1,stimg,stimc),2),1),mean(mean(stimresp_g(:,:,1,stimg,stimc+1),2),1)],'r-', 'LineWidth', 2);
-        ylim([-50 100]);
+        %ylim([-50 100]);
         hold on;
         plot([stimc,stimc+1],[mean(mean(stimresp_g(:,:,2,stimg,stimc),2),1),mean(mean(stimresp_g(:,:,2,stimg,stimc+1),2),1)],'b-', 'LineWidth', 2);
         hold on;
@@ -516,9 +516,63 @@ for stimg = 1:length(stimgroups)
     title(sprintf('%s',stimgrnames{stimg}));
     figurewrite(sprintf('%s',stimgrnames{stimg}),[],[],'FvsC');
 end
+%% F vs C SF for VWFA and FFA
+
+vwfaelec = {[],[]};
+ffaelec = {[],[]};
+targetstim = {[ 8 9 4 ] [ 12 13 5]};
+otherstim = {[ 12 13 5  2 23 24] [8 9 4 2 23 24]};
+for zzz = 1:length(subjects)
+    for ccc = gcc{zzz}
+        for stimc = 1:length(targetstim)
+            targetstimresp = squeeze(mean(mean(mean(bbdata_br(101:300,zzz,ccc,2,:,targetstim{stimc}),5),6),1));
+            otherstimresp = squeeze(mean(mean(mean(bbdata_br(101:300,zzz,ccc,2,:,otherstim{stimc}),5),6),1));
+            if stimc == 1 && targetstimresp > otherstimresp
+                vwfaelec{zzz} = horzcat(vwfaelec{zzz}, ccc);
+            end
+            if stimc == 2 && targetstimresp > otherstimresp
+                ffaelec{zzz} = horzcat(ffaelec{zzz}, ccc);
+            end 
+        end
+    end
+end
+
 %%
 
-    
+color = { 'r', 'g', 'b', 'y', 'c'};
+figureprep([100 100 1700 1100]);
+counter =1;
+for stimg = 1:2:length(stimgroups)
+    subplot(1,2,counter);
+    for stimc = 1:length(stimgroups{stimg})
+        for zzz = 1: length(subjects)
+            vwfarespf{zzz} = squeeze((mean(stimresp_g(zzz,vwfaelec{zzz},1,stimg,stimc),2)));
+            vwfarespc{zzz} = squeeze((mean(stimresp_g(zzz,vwfaelec{zzz},2,stimg,stimc),2)));
+            ffarespf{zzz}  = squeeze((mean(stimresp_g(zzz, ffaelec{zzz},1,stimg,stimc),2)));
+            ffarespc{zzz}  = squeeze((mean(stimresp_g(zzz, ffaelec{zzz},2,stimg,stimc),2)));
+        end
+        quiver(mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespf)),mean(cellfun(@mean,vwfarespc))-mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespc))-mean(cellfun(@mean,ffarespf)),0,color{stimc});
+        
+        hold on;
+        for zzz = 1: length(subjects)
+            vwfarespf{zzz} = squeeze((mean(stimresp_g(zzz,vwfaelec{zzz},1,stimg+1,stimc),2)));
+            vwfarespc{zzz} = squeeze((mean(stimresp_g(zzz,vwfaelec{zzz},2,stimg+1,stimc),2)));
+            ffarespf{zzz}  = squeeze((mean(stimresp_g(zzz, ffaelec{zzz},1,stimg+1,stimc),2)));
+            ffarespc{zzz}  = squeeze((mean(stimresp_g(zzz, ffaelec{zzz},2,stimg+1,stimc),2)));
+        end
+        quiver(mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespf)),mean(cellfun(@mean,vwfarespc))-mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespc))-mean(cellfun(@mean,ffarespf)),0,color{stimc});
+        
+        hold on;
+    end
+    hold off;
+    legend(stimleg{stimg});
+    title(sprintf('SF_%s',stimgrnames{stimg}));
+    counter = counter+1;
+end
+figurewrite('plot',[],[],'SF');
+
+
+        
 
 
 %%
@@ -537,8 +591,9 @@ end
 
 %%
 
+bb_sub = nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
 bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
-bbdata_pc = bsxfun(@rdivide,bb_data,nanmean(nanmean(bbdata_br(:, :, :, :, :, setdiff(1:24,[1 3])),6),4))*100;
+bbdata_pc = bsxfun(@rdivide,bbdata_br,nanmean(nanmean(bb_sub(:, :, :, :, :, setdiff(1:24,[1 3])),6),4));
 
 % baseline subtraction and normalization (per frequency)
 
