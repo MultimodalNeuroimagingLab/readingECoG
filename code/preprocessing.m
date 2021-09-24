@@ -316,52 +316,56 @@ for zzz=1:length(subjects)
   end  
 end
 
-%% CHANNEL AVG TIME AND FREQUENCY RESPONSE
+%%  Baseline subtraction and normalization
 
-psd_avg = squeeze(mean(reshape(psd_on,numchannels*length(subjects),numtasks*numreps*numstimuli,fupper),2));
-psd_baseline = squeeze(mean(reshape(psd_off,numchannels*length(subjects),numtasks*numreps*numstimuli,fupper),2));
+bb_base = nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
+bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
+bbdata_pc = bsxfun(@rdivide,bbdata_br,nanmean(nanmean(bb_base(:, :, :, :, :, setdiff(1:24,[1 3])),6),4));
 
-bb_data_avg = mean(reshape(bb_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
-nb_data_avg = mean(reshape(nb_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
-alpha_data_avg = mean(reshape(alpha_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
-beta_data_avg = mean(reshape(beta_data,length(epochtime_bb),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
-data_avg = mean(reshape(data,length(epochtime),length(subjects)*numchannels,numtasks*numreps*numstimuli),3)';
+%%  Spectral Response
 
-%% PLOT CHANNEL AVG TIME AND FREQUENCY RESPONSE
+% for zzz = 
+%     for ccc = 
+%         for ttt =
+%             for stim
+    [S, f] = getWaveletSpectrogram(squeeze(mean(mean(data(:, 1, 75, 2, :, :),5),6)), fsorig, [1, 200]);     % Returns the Morlet (Gabor) wavelet transform (Spectrogram) for a signal - HH
+    %[S2, f] = getWaveletSpectrogram(squeeze(mean(mean(data(off_samples, 1, 75, 2, :, :),5),6)), fsorig, [1, 200]);   
+    figure,uimagesc(epochtime,f,S)
+    axis xy
+    plot(S)
 
-clims = [0 50];
-figure,imagesc(bb_data_avg);
-colorbar;
-set(gca,'XTick',0:100:800)
-set(gca,'XTickLabel',-0.5:0.5:3.5)
 
-% EP odd-sub1/even-sub2
-figure,imagesc(data_avg,[-50,50]);
-colorbar;
-set(gca,'XTick',0:1000:8000)
-set(gca,'XTickLabel',-0.5:0.5:3.5)
+%% Reaction Time
 
-%%
-for ccc = 41
-    figure,plot(data_avg(ccc*2-1,:))
+reactiontime = NaN * ones(length(subjects),numreps,numstimuli);
+stimc = zeros(length(subjects),numstimuli); 
+for zzz = 1:length(subjects)
+    files = matchfiles(sprintf('../data/%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
+    assert(length(files)==length(subjectfilenums{zzz}));
+    % process each run
+    for p=1:length(subjectfilenums{zzz})
+      if mod2(p,2)==2
+      % load behavioral file
+      a1 = load(files{p});
+      [keytimes,badtimes,keybuttons] = ptviewmoviecheck(a1.timeframes,a1.timekeys,0.25,'t',0.25,1);
+          for q=1:size(a1.trialpattern)  % 68 trials
+            ix = find(a1.trialpattern(q,:));
+            if ~isempty(ix)  % the first and last are blank
+                stimix = a1.classorder(ix);  % 1-24 (which stimulus are we on)
+                fpt = length(a1.timeframes)/size(a1.trialpattern,1);  % number of frames per trial
+                assert(fpt==40);
+                starttime = a1.timeframes((q-1)*fpt + 1);
+                endtime   = a1.timeframes((q-1)*fpt + fpt + 1);
+                okix = find(keytimes > starttime & keytimes < endtime);
+                stimc(zzz,stimix) = stimc(zzz,stimix) + 1;  % which trial number are we on now?
+                if ~isempty(okix)
+                    reactiontime(zzz,stimc(zzz,stimix),stimix) = 1000*(keytimes(okix(1)) - starttime);  % just take the first one
+                end
+            end
+          end  
+      end
+    end
 end
-hold on;
-plot(data_avg(76*2,:))
-plot(data_avg(77*2,:))
-plot(data_avg(78*2,:))
-hold off;
-set(gca,'XTick',0:1000:8000)
-set(gca,'XTickLabel',-0.5:0.5:3.5)
-
-%% Plot normalized PSD
-
-for ccc = 41
-    figure,semilogy(psd_avg(ccc*2-1,:),'r')
-    hold on;
-    semilogy(psd_baseline(ccc*2-1,:),'k')
-    hold off;
-end
-plot((normalize(10*log10(psd_avg(ccc,:)) - 10*log10(psd_baseline(ccc,:)))))
 
 %% Good Channels(Visually Identified)
 
@@ -372,6 +376,7 @@ plot((normalize(10*log10(psd_avg(ccc,:)) - 10*log10(psd_baseline(ccc,:)))))
 %gcc = sort(horzcat((9:11)*2-1, (44:46)*2-1, (74:78)*2-1, (3)*2, (20:22)*2, (86:87)*2, (108:110)*2));
 
 gcc = {horzcat((9:11), (44:46), (74:78)), horzcat((3), (20:22), (86:87), (108:110)) };
+
 %% Stimuli Timecourse
 
 stimgroups  = {[6 7 8 9 4]   [10 11 12 13 5] [14 15 16 4] [17 18 19 5]};% [20 21 22 10] [2 23 24]};
@@ -396,10 +401,10 @@ for zzz = 1:length(subjects)
                 
 %                 temp = [temp smooth(squeeze(mean(bb_data(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40)];
 
-                stimresp_f(:,zzz,counter,stimg,stimc) = smooth(squeeze(mean(bbdata_br(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40);
+                stimresp_f(:,zzz,counter,stimg,stimc) = smooth(squeeze(mean(bbdata_pc(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40);
                 
-                plot(smooth(squeeze(mean(bbdata_br(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40));
-                ylim([-50 200]); 
+                plot(smooth(squeeze(mean(bbdata_pc(:,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5)),40));
+                %ylim([-50 200]); 
                 xlim([0 400]);
                 set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
                 hold on;
@@ -415,9 +420,9 @@ for zzz = 1:length(subjects)
             for stimc = 1:length(stimgroups{stimg})
                 
                 %temp = [temp smooth(squeeze(mean(bb_data(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40)];
-                stimresp_c(:,zzz,counter,stimg,stimc) = smooth(squeeze(mean(bbdata_br(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40);
-                plot(smooth(squeeze(mean(bbdata_br(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40));
-                ylim([-50 200]); 
+                stimresp_c(:,zzz,counter,stimg,stimc) = smooth(squeeze(mean(bbdata_pc(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40);
+                plot(smooth(squeeze(mean(bbdata_pc(:,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5)),40));
+                %ylim([-50 200]); 
                 xlim([0 400]);
                 set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
                 hold on;
@@ -431,17 +436,16 @@ for zzz = 1:length(subjects)
             temp = [];
             subplot(4,length(stimgroups),2*length(stimgroups)+stimg)
             for stimc = 1:length(stimgroups{stimg})-1
-                stimresp_g(zzz,ccc,1,stimg,stimc) = mean(mean(bbdata_br(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5),1);
-                plot([stimc,stimc+1],[mean(mean(bbdata_br(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5),1),mean(mean(bbdata_br(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc+1)),5),1)],'r-', 'LineWidth', 2);
-                ylim([-50 100]);
+                stimresp_g(zzz,ccc,1,stimg,stimc) = mean(mean(bbdata_pc(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5),1);
+                plot([stimc,stimc+1],[mean(mean(bbdata_pc(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5),1),mean(mean(bbdata_pc(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc+1)),5),1)],'r-', 'LineWidth', 2);
+                %ylim([-50 100]);
                 hold on;
-                stimresp_g(zzz,ccc,2,stimg,stimc) = mean(mean(bbdata_br(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1);
-                plot([stimc,stimc+1],[mean(mean(bbdata_br(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1),mean(mean(bbdata_br(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc+1)),5),1)],'b-', 'LineWidth', 2);
+                stimresp_g(zzz,ccc,2,stimg,stimc) = mean(mean(bbdata_pc(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1);
+                plot([stimc,stimc+1],[mean(mean(bbdata_pc(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1),mean(mean(bbdata_pc(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc+1)),5),1)],'b-', 'LineWidth', 2);
                 hold on;
             end
             stimc = stimc + 1;
-            stimresp_g(zzz,ccc,1,stimg,stimc) = mean(mean(bbdata_br(101:300,zzz,ccc,1,:,stimgroups{stimg}(stimc)),5),1);
-            stimresp_g(zzz,ccc,2,stimg,stimc) = mean(mean(bbdata_br(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1);
+            stimresp_g(zzz,ccc,2,stimg,stimc) = mean(mean(bbdata_pc(101:300,zzz,ccc,2,:,stimgroups{stimg}(stimc)),5),1);
             %stimresp_c{stimg} = temp;
             hold off;
             title(sprintf('%s_G',stimgrnames{stimg}));
@@ -466,8 +470,7 @@ for zzz = 1:length(subjects)
     
 end
 
-%%
-
+%% F v/s C
 
 for stimg = 1:length(stimgroups)
     
@@ -477,7 +480,7 @@ for stimg = 1:length(stimgroups)
         
         subplot(3,length(stimgroups{stimg}),stimc);
         plot(smooth(mean(mean(stimresp_f(:,:,:,stimg,stimc),2),3),40));
-        ylim([0 15]); 
+        %ylim([0 15]); 
         xlim([0 400]);
         set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
         hold on;
@@ -516,7 +519,8 @@ for stimg = 1:length(stimgroups)
     title(sprintf('%s',stimgrnames{stimg}));
     figurewrite(sprintf('%s',stimgrnames{stimg}),[],[],'FvsC');
 end
-%% F vs C SF for VWFA and FFA
+
+%% SF for VWFA and FFA  (overall)
 
 vwfaelec = {[],[]};
 ffaelec = {[],[]};
@@ -536,8 +540,6 @@ for zzz = 1:length(subjects)
         end
     end
 end
-
-%%
 
 color = { 'r', 'g', 'b', 'y', 'c'};
 figureprep([100 100 1700 1100]);
@@ -571,8 +573,116 @@ for stimg = 1:2:length(stimgroups)
 end
 figurewrite('plot',[],[],'SF');
 
+%% SF for VWFA and FFA  (cumulative)
 
+
+color = { 'r', 'g', 'b', 'm', 'c'};
+
+
+
+for inc = 1:length(10:10:200)
+    counter = 1;
+    for stimg = 1:2:length(stimgroups)
+        subplot(1,2,counter);
+        for stimc = 1:length(stimgroups{stimg})
+            for zzz = 1: length(subjects)
+                vwfarespf{zzz} = squeeze(mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},1,:,stimgroups{stimg}(stimc)),5),1),2));
+                vwfarespc{zzz} = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},2,:,stimgroups{stimg}(stimc)),5),1),2)));
+                ffarespf{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},1,:,stimgroups{stimg}(stimc)),5),1),2)));
+                ffarespc{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},2,:,stimgroups{stimg}(stimc)),5),1),2)));
+            end
+            quiver(mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespf)),mean(cellfun(@mean,vwfarespc))-mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespc))-mean(cellfun(@mean,ffarespf)),0,color{stimc});
         
+            hold on;
+            for zzz = 1: length(subjects)
+                vwfarespf{zzz} = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},1,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+                vwfarespc{zzz} = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},2,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+                ffarespf{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},1,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+                ffarespc{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},2,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+            end
+            quiver(mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespf)),mean(cellfun(@mean,vwfarespc))-mean(cellfun(@mean,vwfarespf)),mean(cellfun(@mean,ffarespc))-mean(cellfun(@mean,ffarespf)),0,color{stimc});
+        
+            hold on;
+        end
+        hold off;
+        legend(stimleg{stimg});
+        title(sprintf('SF%s',stimgrnames{stimg}));
+        counter = counter+1;
+    end
+    figurewrite(sprintf('%04d',inc*50),[],[],'cSF');
+end
+
+
+
+%% SF for VWFA and FFA  (progressive)
+
+
+color = { 'r', 'g', 'b', 'm', 'c'};
+ttl = {'Phase','','Contrast'};
+
+x01 = 0;
+x02 = 0;
+x03 = 0;
+x04 = 0;
+y01 = 0;
+y02 = 0;
+y03 = 0;
+y04 = 0;
+
+
+for stimg = 1:2:length(stimgroups)
+    %subplot(1,2,counter);
+    counter = 1;
+    for stimc = 1:length(stimgroups{stimg})
+        for inc = 1:length(10:10:200)
+            for zzz = 1: length(subjects)
+                vwfarespf{zzz} = squeeze(mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},1,:,stimgroups{stimg}(stimc)),5),1),2));
+                vwfarespc{zzz} = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},2,:,stimgroups{stimg}(stimc)),5),1),2)));
+                ffarespf{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},1,:,stimgroups{stimg}(stimc)),5),1),2)));
+                ffarespc{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},2,:,stimgroups{stimg}(stimc)),5),1),2)));
+            end
+            
+            x1 = mean(cellfun(@mean,vwfarespf));
+            y1 = mean(cellfun(@mean,ffarespf));
+            x2 = mean(cellfun(@mean,vwfarespc));
+            y2 = mean(cellfun(@mean,ffarespc));
+            quiver(x01,y01,x1-x01,y1-y01,'m');
+            hold on;
+            quiver(x02,y02,x2-x02,y2-y02,'r');
+            hold on;
+            x01 = x1;
+            x02 = x2;
+            y01 = y1;
+            y02 = y2;
+            for zzz = 1: length(subjects)
+                vwfarespf{zzz} = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},1,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+                vwfarespc{zzz} = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,vwfaelec{zzz},2,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+                ffarespf{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},1,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+                ffarespc{zzz}  = squeeze((mean(mean(mean(bbdata_pc(101:(101+inc*10),zzz,ffaelec{zzz},2,:,stimgroups{stimg+1}(stimc)),5),1),2)));
+            end
+            x3 = mean(cellfun(@mean,vwfarespf));
+            y3 = mean(cellfun(@mean,ffarespf));
+            x4 = mean(cellfun(@mean,vwfarespc));
+            y4 = mean(cellfun(@mean,ffarespc));
+            quiver(x03,y03,x3-x03,y3-y03,'c');
+            hold on;
+            quiver(x04,y04,x4-x04,y4-y04,'b');
+            hold on;
+            x03 = x3;
+            x04 = x4;
+            y03 = y3;
+            y04 = y4;
+        end
+        xlabel('VWFA');
+        ylabel('FFA');
+        legend(["Word Fix","Word Cat","Face Fix","Face Cat"]);
+        title(sprintf('SF-%s-%s',ttl{stimg},stimleg{stimg}(counter)));
+        hold off;
+        figurewrite(sprintf('SF-%s-%s',ttl{stimg},stimleg{stimg}(counter)),[],[],'pSF');
+        counter = counter+1;
+    end
+    
+end
 
 
 %%
@@ -588,71 +698,3 @@ figurewrite('plot',[],[],'SF');
 %   - note that stimulus #1 and #3 are not presented, so the data for these will be zeros.
 %
 % NOTICE HOW WE COMPUTE BB ON THE ENTIRE DATASET AT ONCE!  otherwise, you'll get weird run to run differences.
-
-%%
-
-bb_sub = nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
-bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
-bbdata_pc = bsxfun(@rdivide,bbdata_br,nanmean(nanmean(bb_sub(:, :, :, :, :, setdiff(1:24,[1 3])),6),4));
-
-% baseline subtraction and normalization (per frequency)
-
-% for zzz = 
-%     for ccc = 
-%         for ttt =
-%             for stim
-    [S, f] = getWaveletSpectrogram(squeeze(mean(mean(data(:, 1, 75, 2, :, :),5),6)), fsorig, [1, 200]);     % Returns the Morlet (Gabor) wavelet transform (Spectrogram) for a signal - HH
-    %[S2, f] = getWaveletSpectrogram(squeeze(mean(mean(data(off_samples, 1, 75, 2, :, :),5),6)), fsorig, [1, 200]);   
-    figure,uimagesc(epochtime,f,S)
-    axis xy
-    plot(S)
-
-%% fmri type result - beta gain ....  Already included
-
-ccc = 75
-for j=1:4
-    subplot(1,4,j);
-for stimc = 1:length(stimgroups{j})-1
-    plot([stimc,stimc+1],[mean(mean(bbdata_br(101:300,1,ccc,1,:,stimgroups{j}(stimc)),5),1),mean(mean(bbdata_br(101:300,1,ccc,1,:,stimgroups{j}(stimc+1)),5),1)],'r-', 'LineWidth', 2);
-    ylim([-50 200]);
-    hold on;
-    plot([stimc,stimc+1],[mean(mean(bbdata_br(101:300,1,ccc,2,:,stimgroups{j}(stimc)),5),1),mean(mean(bbdata_br(101:300,1,ccc,2,:,stimgroups{j}(stimc+1)),5),1)],'b-', 'LineWidth', 2);
-    hold on;
-end
-hold off;
-end
-%% Reaction Time
-
-reactiontime = NaN * ones(length(subjects),numreps,numstimuli);
-stimc = zeros(length(subjects),numstimuli); 
-for zzz = 1:length(subjects)
-    files = matchfiles(sprintf('../data/%s/LogFiles/*.mat',subjects{zzz}))   %matchfiles: to match the filename (knkutils)
-    assert(length(files)==length(subjectfilenums{zzz}));
-    % process each run
-    for p=1:length(subjectfilenums{zzz})
-      if mod2(p,2)==2
-      % load behavioral file
-      a1 = load(files{p});
-      [keytimes,badtimes,keybuttons] = ptviewmoviecheck(a1.timeframes,a1.timekeys,0.25,'t',0.25,1);
-          for q=1:size(a1.trialpattern)  % 68 trials
-            ix = find(a1.trialpattern(q,:));
-            if ~isempty(ix)  % the first and last are blank
-                stimix = a1.classorder(ix);  % 1-24 (which stimulus are we on)
-                fpt = length(a1.timeframes)/size(a1.trialpattern,1);  % number of frames per trial
-                assert(fpt==40);
-                starttime = a1.timeframes((q-1)*fpt + 1);
-                endtime   = a1.timeframes((q-1)*fpt + fpt + 1);
-                okix = find(keytimes > starttime & keytimes < endtime);
-                stimc(zzz,stimix) = stimc(zzz,stimix) + 1;  % which trial number are we on now?
-                if ~isempty(okix)
-                    reactiontime(zzz,stimc(zzz,stimix),stimix) = 1000*(keytimes(okix(1)) - starttime);  % just take the first one
-                end
-            end
-          end  
-      end
-    end
-end
-
-
-
-
