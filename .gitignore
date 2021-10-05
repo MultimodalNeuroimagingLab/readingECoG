@@ -12,6 +12,15 @@ __MACOSX
 desktop.ini
 **/desktop.ini
 
+#no data files
+BCMecog/
+temp/
+data/
+misc/
+References/
+readingECoG-raw/
+
+
 # No matlab metafiles
 *.m~
 *.asv
