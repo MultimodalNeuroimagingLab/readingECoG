@@ -2,13 +2,15 @@
 
 %path Documents\git_repo\readingECoG\code
 
+addpath(genpath('/Users/zeeshanqadir/Documents/git_repo/knkutils'))
+
 % define
 subjects = {'YBA' 'YBD'};
 subjectfilenums = {[12 13 14 15] [30 31 32 33]};  % this is for the file names (one file per run per [subject])
 channels = 1:128;
 numchannels = 128;
 photodiode = 129;   % photodiode signal is in #129
-epochrng = [-.5 3.5];  % pull out this time range (in seconds)
+epochrng = [-.5 4.5];  % pull out this time range (in seconds)
 onsetix = {{1:66 1:66 1:66 1:66} {1:66 1:66 1:66 1:66}};  % indices to pull the black circle (based on the no of stimulus trials per run; photodiode detects this circle)
 fsorig = 2000;    % sampling rate (original)
 fsjump = 10;      % moving average length
@@ -145,11 +147,13 @@ delta_data = zeros(length(epochtime_bb),length(subjects),numchannels,numtasks,nu
 
 %hacks below - data size > 64GB so break across task + spectra time window
 %(-0.5:2.5 s)
-spectra_fix = zeros(length(spectratime),length(subjects),numchannels,numreps,numstimuli,77,'single'); %check how to get 77??
-spectra_cat = zeros(length(spectratime),length(subjects),numchannels,numreps,numstimuli,77,'single');
+% spectra_fix = zeros(length(spectratime),length(subjects),numchannels,numreps,numstimuli,77,'single'); %check how to get 77??
+% spectra_cat = zeros(length(spectratime),length(subjects),numchannels,numreps,numstimuli,77,'single');
 
 % psd_on = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,'single');
 % psd_off = zeros(length(subjects),numchannels,numtasks,numreps,numstimuli,fupper,'single');
+
+
 stimcounter = zeros(length(subjects),numchannels,numtasks,numstimuli);  % number of trials encountered so far
 recdata = {};
 bbtemp = {};
@@ -299,7 +303,8 @@ for zzz=1:length(subjects)
     
     %assert(all(isfinite(bb)));
     
-    % compute moving average to reduce data rate to 200Hz (2000/10)
+    % compute moving average to reduce data rate to 200Hz (2000/10) in the
+    % next step
     bb = movmean(bb,  fsjump,1);  % slight slop due to evenness of the number.  we can plop this in the photodiode transition issue.
     nb = movmean(nb,  fsjump,1);
     betab = movmean(betab,  fsjump,1);
@@ -370,13 +375,13 @@ for zzz=1:length(subjects)
 %             spectra_cat(:,zzz,ccc,stimco,a1.stimclassrec(ttt),:) = S(:,1:length(spectratime))';
 %         end
         
-%         [psdvar,f] = pwelch(temp_raw(on_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
-%          %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
-%         psd_on(zzz,ccc,mod2(p,2), stimco, ...
-%              a1.stimclassrec(ttt),:) = psdvar(1:fupper);
-%         [psdvar,f] = pwelch(temp_raw(off_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
-%         psd_off(zzz,ccc,mod2(p,2), stimco, ...
-%              a1.stimclassrec(ttt),:) = psdvar(1:fupper);
+        [psdvar,f] = pwelch(temp_raw(on_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
+         %figureprep([100 100 900 300],1);plot(f,10*log10(psdvar));
+        psd_on(zzz,ccc,mod2(p,2), stimco, ...
+             a1.stimclassrec(ttt),:) = psdvar(1:fupper);
+        [psdvar,f] = pwelch(temp_raw(off_samples)',hamming(1000),0,2 ^ nextpow2(fsorig),fsorig);
+        psd_off(zzz,ccc,mod2(p,2), stimco, ...
+             a1.stimclassrec(ttt),:) = psdvar(1:fupper);
 		
         stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) = ...
            stimcounter(zzz,ccc,mod2(p,2),a1.stimclassrec(ttt)) + 1;
@@ -391,6 +396,9 @@ end
 bb_base = nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
 bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
 bbdata_pc = bsxfun(@rdivide,bbdata_br,nanmean(nanmean(bb_base(:, :, :, :, :, setdiff(1:24,[1 3])),6),4));
+
+% save('Feb21_exttime_psd.mat','-v7.3');
+% load('Feb21_exttime_psd.mat');
 
 spectra_fix = log(spectra_fix) - log(mean(spectra_fix(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
 spectra_cat = log(spectra_cat) - log(mean(spectra_cat(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
@@ -470,8 +478,8 @@ for zzz = 1:length(subjects)
                 
                 for stimc = 1:length(stimgroups{stimg})
 
-                    stimresp(:,counter,ttt,stimg,stimc) = smooth(squeeze(mean(bbdata_pc(:,zzz,ccc,ttt,:,stimgroups{stimg}(stimc)),5)),40);
-                    plot(stimresp(:,counter,ttt,stimg,stimc),'color',[0.2*stimc 0.5 1-0.2*stimc]);
+                    stimresp(:,counter,ttt,stimg,stimc) = squeeze(mean(bbdata_pc(:,zzz,ccc,ttt,:,stimgroups{stimg}(stimc)),5));
+                    plot(smooth(stimresp(:,counter,ttt,stimg,stimc),40),'color',[0.2*stimc 0.5 1-0.2*stimc]);
               
                 end
                
@@ -575,8 +583,8 @@ for zzz = 1:length(subjects)
                 
         end
         
-        exportgraphics(gcf,[sprintf('stimtimecourse/Subj%d_ch%03d_%s.eps',zzz,ccc,channellabels{zzz}{ccc})]);
         figurewrite(sprintf('Subj%d_ch%03d_%s',zzz,ccc,channellabels{zzz}{ccc}),-1,[],'stimtimecourse');
+        %exportgraphics(gcf,[sprintf('stimtimecourse/Subj%d_ch%03d_%s.eps',zzz,ccc,channellabels{zzz}{ccc})]);
         
         counter = counter+1;
         
@@ -586,26 +594,28 @@ end
 
 %% F v/s C
 
+temp = [];
+temp2 = [];
 
 for stimg = 1:length(stimgroups)
     
     figureprep([100 100 1700 1100]);
     mx = -Inf; mn = Inf;
-    
     for stimc = 1:length(stimgroups{stimg})
         
         subplot(3,length(stimgroups{stimg}),stimc); hold on;
         
+        nTrials = size(stimresp(:,:,1,stimg,stimc),2);
         yMean = mean(stimresp(:,:,1,stimg,stimc),2);
-        ySEM  = std(stimresp(:,:,1,stimg,stimc),0,2)/sqrt(length(yMean));
-        ts = tinv([0.025, 0.975], length(yMean) - 1); % n-1 degrees of freedom -HH
+        ySEM  = std(stimresp(:,:,1,stimg,stimc),0,2)/sqrt(nTrials);
+        ts = tinv([0.025, 0.975], nTrials - 1); % n-1 degrees of freedom -HH
         conf = [(yMean+ts(1)*ySEM)', (yMean(end:-1:1)+ts(2)*ySEM(end:-1:1))'];
         plot(yMean,'r-', 'LineWidth', 2);
         fill([1:length(epochtime_bb) length(epochtime_bb):-1:1],conf, [.5 0 0],'EdgeColor',[.5 0 0],'FaceAlpha',.5,'HandleVisibility','off');
         
         yMean = mean(stimresp(:,:,2,stimg,stimc),2);
-        ySEM  = std(stimresp(:,:,2,stimg,stimc),0,2)/sqrt(length(yMean));
-        ts = tinv([0.025, 0.975], length(yMean) - 1); % n-1 degrees of freedom
+        ySEM  = std(stimresp(:,:,2,stimg,stimc),0,2)/sqrt(nTrials);
+        ts = tinv([0.025, 0.975], nTrials - 1); % n-1 degrees of freedom
         conf = [(yMean+ts(1)*ySEM)', (yMean(end:-1:1)+ts(2)*ySEM(end:-1:1))'];
         plot(yMean,'b-', 'LineWidth', 2);
         fill([1:length(epochtime_bb) length(epochtime_bb):-1:1], conf, [0 0 .5],'EdgeColor',[0 0 .5],'FaceAlpha',.5,'HandleVisibility','off');
@@ -613,10 +623,10 @@ for stimg = 1:length(stimgroups)
         ax = axis;
         mx = max(mx,max(ax(3:4)));
         mn = min(mn,min(ax(3:4)));
-        xlim([0 400]);
+        xlim([0 800]);
         ylabel('BB response (% change)');
         xlabel('t (s)');
-        set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
+        set(gca,'XTick',0:100:800); set(gca,'XTickLabel',-0.5:0.5:2.5);
         title(stimgrnames{stimg}+" "+stimleg{stimg}(stimc));
         legend('F','C');
         
@@ -627,7 +637,7 @@ for stimg = 1:length(stimgroups)
         subplot(3,length(stimgroups{stimg}),stimc); hold on;
         ax = axis;
         axis([ax(1:2) mn mx]);
-        exportgraphics(gca,[sprintf('FvsC/%s%s/',stimgrnames{stimg},stimleg{stimg}(stimc)) 'STC.eps']);
+        %exportgraphics(gca,[sprintf('FvsC/%s%s/',stimgrnames{stimg},stimleg{stimg}(stimc)) 'STC.eps']);
     
     end
         
@@ -637,10 +647,12 @@ for stimg = 1:length(stimgroups)
         
         subplot(3,length(stimgroups{stimg}),length(stimgroups{stimg})+stimc); hold on;
         scaling_factor = squeeze(stimresp(:,:,2,stimg,stimc)) - squeeze(stimresp(:,:,1,stimg,stimc));
+        nTrials = size(scaling_factor,2);
         plot(mean(scaling_factor,2));
         yMean = mean(scaling_factor,2);
-        ySEM  = std(scaling_factor,0,2)/sqrt(length(yMean));
-        ts = tinv([0.025, 0.975], length(yMean) - 1); % n-1 degrees of freedom -HH
+        temp = [temp yMean];
+        ySEM  = std(scaling_factor,0,2)/sqrt(nTrials);
+        ts = tinv([0.025, 0.975], nTrials - 1); % n-1 degrees of freedom -HH
         conf = [(yMean+ts(1)*ySEM)', (yMean(end:-1:1)+ts(2)*ySEM(end:-1:1))'];
         plot(yMean,'k-', 'LineWidth', 2);
         fill([1:length(yMean) length(yMean):-1:1],conf, [.5 0.5 0.5],'EdgeColor',[.5 0.5 0.5],'FaceAlpha',.5,'HandleVisibility','off');
@@ -663,7 +675,7 @@ for stimg = 1:length(stimgroups)
         subplot(3,length(stimgroups{stimg}),length(stimgroups{stimg})+stimc); hold on;
         ax = axis;
         axis([ax(1:2) mn mx]);
-        exportgraphics(gca,[sprintf('FvsC/%s%s/',stimgrnames{stimg},stimleg{stimg}(stimc)) 'SF.eps']);
+        %exportgraphics(gca,[sprintf('FvsC/%s%s/',stimgrnames{stimg},stimleg{stimg}(stimc)) 'SF.eps']);
     
     end
     
@@ -689,21 +701,28 @@ for stimg = 1:length(stimgroups)
     exportgraphics(gca,[sprintf('FvsC/%s%s/',stimgrnames{stimg},stimleg{stimg}(stimc)) 'Gain.eps']);
     
 %     subplot(3,length(stimgroups),2*length(stimgroups{stimg})+2); hold on;
-%     
-%     for stimc = 1:length(stimgroups{stimg})
-%     
-%         bar(stimc,mean(nanmean(reactiontime(:,:,stimgroups{stimg}(stimc)),2),1));
-%         errorbar(stimc,mean(nanmean(reactiontime(:,:,stimgroups{stimg}(stimc)),2),1),2*std(nanmean(reactiontime(:,:,stimgroups{stimg}(stimc)),2),0,1),'Color','k','HandleVisibility','off');
-%       
-%     end
+    
+    for stimc = 1:length(stimgroups{stimg})
+    
+        bar(stimc,mean(nanmean(reactiontime(:,:,stimgroups{stimg}(stimc)),2),1));
+        temp2 = [temp2 mean(nanmean(reactiontime(:,:,stimgroups{stimg}(stimc)),2),1)];
+        errorbar(stimc,mean(nanmean(reactiontime(:,:,stimgroups{stimg}(stimc)),2),1),2*std(nanmean(reactiontime(:,:,stimgroups{stimg}(stimc)),2),0,1),'Color','k','HandleVisibility','off');
+      
+    end
 %     hold off;
 %     ylabel('Response Time (ms)');
 %     set(gca,'XTick',1:length(stimgroups{stimg})); set(gca,'XTickLabel',stimleg{stimg});
 %     title(sprintf('%s Reaction Time',stimgrnames{stimg}));
 %     legend(stimleg{stimg});
     %exportgraphics(gcf,sprintf('%s.eps',stimgrnames{stimg}))
-    figurewrite(sprintf('%s',stimgrnames{stimg}),[],[],'FvsC');
+    %figurewrite(sprintf('%s',stimgrnames{stimg}),[],[],'FvsC');
 end
+
+%%
+
+plot(temp2',mean(temp,1)');
+scatter(temp2',mean(temp,1)')
+
 
 %% SF for VWFA and FFA  (overall)
 
@@ -865,7 +884,7 @@ for stimg = 1:2:length(stimgroups)
         xlabel('VWFA');
         ylabel('FFA');
         legend(["Word Fix","Word Cat","Face Fix","Face Cat"]);
-        title(sprintf('SF-%s-%s',ttl{stimg},stimleg{stimg}(counter)));
+        title(sprintf('SF-%s-%s',ttl{stimg},stimleg{stimg}(counter)));     
         hold off;
         exportgraphics(gcf,[sprintf('pSF/SF-%s-%s.eps',ttl{stimg},stimleg{stimg}(counter))]);
         figurewrite(sprintf('SF-%s-%s',ttl{stimg},stimleg{stimg}(counter)),[],[],'pSF');
