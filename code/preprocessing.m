@@ -392,19 +392,63 @@ end
 
 %%  Baseline subtraction and normalization
 
-bb_base = nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
-bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1);
-bbdata_pc = bsxfun(@rdivide,bbdata_br,nanmean(nanmean(bb_base(:, :, :, :, :, setdiff(1:24,[1 3])),6),4));
+% new: mean across time -500 to 0 ms, then across 6 trials, all stim, and then 2 tasks
+bb_base = nanmean( nanmean( nanmean( nanmean( bb_data(1:100, :, :, :, :, :), 1), 5), 6), 4);
+bbdata_pc = bsxfun(@rdivide, bb_data, bb_base) - 1;
+
+% old
+% bb_base = nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1); % mean across trials, then mean across time 0:500ms
+% bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1); % mean across trials, then mean across time 0:500ms
+% bbdata_pc = bsxfun(@rdivide,bbdata_br,nanmean(nanmean(bb_base(:, :, :, :, :, setdiff(1:24,[1 3])),6),4));
 
 % save('Feb21_exttime_psd.mat','-v7.3');
 % load('Feb21_exttime_psd.mat');
 
-spectra_fix = log(spectra_fix) - log(mean(spectra_fix(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
-spectra_cat = log(spectra_cat) - log(mean(spectra_cat(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
+% take log10 here:
+% also take mean baseline across everything (fix + cat) first
+% spectra_fix = log(spectra_fix) - log(mean(spectra_fix(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
+% spectra_cat = log(spectra_cat) - log(mean(spectra_cat(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
 
 %plotting spectra
 %load('dg_colormap.mat', 'cm') %KM color scheme;
 %figure,uimagesc(spectratime,f_spectra,squeeze(spectra_cat(:,1,75,1,5,:))',[-5 5]); axis xy; colormap(cm); colorbar
+
+%% Stats
+
+task_number = {[1 2 3 4]   [5  6  7  8]  [9  10 11 12] [13 14 15 16]};
+stimgroups  = {[6 7 8 9]   [10 11 12 13] [14 15 16 4]  [17 18 19 5]};% [20 21 22 10] [2 23 24]};
+stimleg  = {["0", "25", "50", "75"]  ["0", "25", "50", "75"] ["3" "5" "8" "100"] ["4" "6" "10" "100"]};
+stimgrnames = {'Word Phase' 'Face Phase'    'Word Contrast'   'Face Contrast'};%   'Noise Con'   'Other'};
+
+p = zeros(length(subjects), numchannels);
+t = zeros(length(subjects), numchannels);
+d = zeros(length(subjects), numchannels);
+r = zeros(length(subjects), numchannels);
+
+for zzz = 1:2
+    for ccc = 1:numchannels
+        x = [];
+        for ppp = 1:2
+            for stimg = 1:length(stimgroups)
+                for stimc = 1:length(stimgroups{stimg})
+                     x = [x; squeeze(mean(mean(bbdata_pc(120:180, zzz, ccc, ppp, :, stimgroups{stimg}(stimc)), 5), 1))];
+                end
+            end
+        end
+        [~, pval, ~, stats] = ttest(x);
+        p (zzz, ccc) = pval;
+        t (zzz, ccc) = stats.tstat;
+        d (zzz, ccc) = mean(x)/ sqrt(var(x));
+        r (zzz, ccc) = corrcoef(x)^2;
+    end
+end
+
+for zzz = 1 : length(subjects)
+    figure,scatter (1 : numchannels, squeeze(p(zzz, :))');
+    hold on
+    yline(0.05);
+end
+
 
 %% Reaction Time
 
@@ -446,7 +490,7 @@ end
 
 %gcc = sort(horzcat((9:11)*2-1, (44:46)*2-1, (74:78)*2-1, (3)*2, (20:22)*2, (86:87)*2, (108:110)*2));
 
-gcc = {horzcat((9:11), (44:46), (74:78)), horzcat((3), (20:22), (86:87), (108:110)) };
+%gcc = {horzcat((9:11), (44:46), (74:78)), horzcat((3), (20:22), (86:87), (108:110)) };
 
 %% Stimuli Timecourse
 
@@ -458,10 +502,18 @@ stimresp = zeros(length(epochtime_bb),20,numtasks,length(stimgroups),5);  %hack 
 stimgain = zeros(20,numtasks,length(stimgroups),5);
 counter = 1;
 
+
 % One plot per subject per good electrode
 for zzz = 1:length(subjects)
    
-    for ccc = gcc{zzz}
+    gcc = [];
+    for ccc = 1 : numchannels
+        if p(zzz, ccc) < 0.05
+            gcc = [gcc, ccc];
+        end
+    end
+    
+    for ccc = gcc
         
         figureprep([100 100 1700 1100]);
         
@@ -485,10 +537,10 @@ for zzz = 1:length(subjects)
                 ax = axis;
                 mx = max(mx,max(ax(3:4)));
                 mn = min(mn,min(ax(3:4)));
-                axis([0 400 ax(3:4)]);
-                set(gca,'XTick',0:100:400); set(gca,'XTickLabel',-0.5:0.5:1.5);
+                axis([0 1000 ax(3:4)]);
+                set(gca,'XTick',0:100:1000); set(gca,'XTickLabel',-0.5:0.5:4.5);
                 xlabel('t (s)');
-                ylabel('BB response (% change)');
+                ylabel('BB response (x fold)');
                 if ttt == 1
                     title(sprintf('%s Fixation',stimgrnames{stimg}));
                 elseif ttt == 2
@@ -778,7 +830,6 @@ figurewrite('plot',[],[],'SF');
 
 %% SF for VWFA and FFA  (cumulative)
 
-
 color = { 'r', 'g', 'b', 'm', 'c'};
 
 
@@ -892,6 +943,56 @@ for stimg = 1:2:length(stimgroups)
     
 end
 
+
+%% Plotting Spectograms
+
+tasklabels = {'Fix' 'Cat'};
+stimgroups  = {[6 7 8 9]   [10 11 12 13] [14 15 16 4] [17 18 19 5]};% [20 21 22 10] [2 23 24]};
+stimleg  = {["0", "25", "50", "75"]  ["0", "25", "50", "75"] ["3" "5" "8" "100"] ["4" "6" "10" "100"]};
+stimgrnames = {'Word Phase-coherence' 'Face Phase-coherence'    'Word Contrast'   'Face Contrast'};%   'Noise Con'   'Other'};
+
+spect_base = zeros(length(subjects),numchannels,77);
+
+for zzz = 2%1:2
+    for ccc = 108%1:numchannels
+        S_temp = [];
+        for ppp = 1:2
+            for stimg = 1:length(stimgroups)
+                for stimc = 1:length(stimgroups{stimg})
+                    temp = mean(data(:, zzz, ccc, ppp, :, stimgroups{stimg}(stimc)), 5);
+                    temp(isnan(temp)) = 0;
+                    [S,f_spectra] = getWaveletSpectrogram(temp, fsorig, [1, fupper]);
+                    S_temp = [S_temp; S'];
+                end
+            end
+        end
+        spect_base (zzz,ccc,:) = mean(S_temp, 1);
+    end
+end
+
+
+
+for zzz = 2%1:2
+    for ccc = 108%1:numchannels
+        for ppp = 2%1:2
+            for stimg = 1:length(stimgroups)
+                for stimc = 1:length(stimgroups{stimg})
+                    temp = mean(data(:, zzz, ccc, ppp, :, stimgroups{stimg}(stimc)), 5);
+                    temp(isnan(temp)) = 0;
+                    [S,f_spectra] = getWaveletSpectrogram(temp, fsorig, [1, fupper]);
+                    spectra = log10(S) - log10(squeeze(spect_base(zzz,ccc,:)));
+                    %plotting spectra
+                    load('dg_colormap.mat', 'cm') %KM color scheme;
+                    figure, uimagesc(epochtime(1:9001),f_spectra,spectra,[-1 1]); axis xy; colormap(cm); colorbar
+                    xlabel('Time (s)');
+                    ylabel('Frequency (Hz)');
+                    title( stimgrnames{stimg} + " " + stimleg{stimg}(stimc))
+                    %figurewrite(stimgrnames{stimg} + " " + stimleg{stimg}(stimc), -1, [], sprintf('spectrogram/Subj%d_ch%03d_%s_%s', zzz, ccc, channellabels{zzz}{ccc}, tasklabels{ppp}));
+                end
+            end
+        end
+    end
+end
 
 %%
 % what we did:
