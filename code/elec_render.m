@@ -46,8 +46,8 @@ RPTO6 = [26.9, -99, 7.2];
 RPTO7 = [39.1, -90, 0.79];
 RPTO8 = [46, -86, 1.4];
 
-ieeg_elAdd([RPTO1; RPTO2; RPTO3; RPTO4; RPTO5; RPTO6; RPTO7; RPTO8], 'k', 40)
-ieeg_elAdd([RPTO1; RPTO2; RPTO3; RPTO4; RPTO5; RPTO6; RPTO7; RPTO8], [.99 .99 .99], 30)
+ieeg_elAdd([RPTO1; RPTO2; RPTO3; RPTO4; RPTO5; RPTO6; RPTO7; RPTO8], 'k', 20)
+ieeg_elAdd([RPTO1; RPTO2; RPTO3; RPTO4; RPTO5; RPTO6; RPTO7; RPTO8], [.99 .99 .99], 15)
 
 % RP 1-6, RF 1-6
 % ieeg_viewLight(90, 0) RL
@@ -59,8 +59,8 @@ RF4 = [67.8, -10.5, 22.7];
 RF5 = [68.9, -15.6, 14.5];
 RF6 = [69.7, -21, 4.6];
 
-ieeg_elAdd([RF1; RF2; RF3; RF4; RF5; RF6],'k', 40)
-ieeg_elAdd([RF1; RF2; RF3; RF4; RF5; RF6], [.99 .99 .99], 30)
+ieeg_elAdd([RF1; RF2; RF3; RF4; RF5; RF6],'k', 20)
+ieeg_elAdd([RF1; RF2; RF3; RF4; RF5; RF6], [.99 .99 .99], 15)
 
 RP1 = [39.3, -44.5, 57.6];
 RP2 = [58, -37.8, 48];
@@ -69,8 +69,8 @@ RP4 = [65, -32.6, 23];
 RP5 = [69, -29.8, 10.7];
 RP6 = [70.2, -29, 2.6];
 
-ieeg_elAdd([RP1; RP2; RP3; RP4; RP5; RP6], 'k', 40)
-ieeg_elAdd([RP1; RP2; RP3; RP4; RP5; RP6], [.99 .99 .99], 30)
+ieeg_elAdd([RP1; RP2; RP3; RP4; RP5; RP6], 'k', 20)
+ieeg_elAdd([RP1; RP2; RP3; RP4; RP5; RP6], [.99 .99 .99], 15)
 
 % RAIT 1-4, RMIT 1-4, RPIT 1-4
 % ieeg_viewLight(-90, -90) RI
@@ -80,27 +80,27 @@ RAIT2 = [36.7, 3.6, -45];
 RAIT3 = [46.7, -3.5, -45.5];
 RAIT4 = [52.6, -11.3, -43]; 
 
-ieeg_elAdd([RAIT1; RAIT2; RAIT3; RAIT4], 'k', 40)
-ieeg_elAdd([RAIT1; RAIT2; RAIT3; RAIT4], [.99 .99 .99], 30)
+ieeg_elAdd([RAIT1; RAIT2; RAIT3; RAIT4], 'k', 20)
+ieeg_elAdd([RAIT1; RAIT2; RAIT3; RAIT4], [.99 .99 .99], 15)
 
 RMIT1 = [20.1, -30.8, -20.6]; 
 RMIT2 = [28.6, -31.2, -22.8]; 
 RMIT3 = [40.6, -31.5, -24.9];
 RMIT4 = [51, -30.7, -30.8];
 
-ieeg_elAdd([RMIT1; RMIT2; RMIT3; RMIT4], 'k', 40)
-ieeg_elAdd([RMIT1; RMIT2; RMIT3; RMIT4], [.99 .99 .99], 30)
+ieeg_elAdd([RMIT1; RMIT2; RMIT3; RMIT4], 'k', 20)
+ieeg_elAdd([RMIT1; RMIT2; RMIT3; RMIT4], [.99 .99 .99], 15)
 
 RPIT1 = [13, -57.7, -6.8]; 
 RPIT2 = [24, -56.7, -9.5]; 
 RPIT3 = [34, -55.6, -18.8];
 RPIT4 = [44, -54.3, -22.2];
 
-ieeg_elAdd([RPIT1; RPIT2; RPIT3; RPIT4], 'k', 40)
-ieeg_elAdd([RPIT1; RPIT2; RPIT3; RPIT4], [.99 .99 .99], 30)
+ieeg_elAdd([RPIT1; RPIT2; RPIT3; RPIT4], 'k', 20)
+ieeg_elAdd([RPIT1; RPIT2; RPIT3; RPIT4], [.99 .99 .99], 15)
 
 % rotate with light - view 1
-% ieeg_viewLight(-60, -30)
+% ieeg_viewLight(-45, -30)
 % figurewrite(sprintf('Subj%d_R_view%d',1,1),-1,[],'rendering');
 % exportgraphics(gcf,[sprintf('rendering/Subj%d_R_view%d.eps',1,1)]);
 
@@ -117,8 +117,34 @@ ieeg_elAdd([RPIT1; RPIT2; RPIT3; RPIT4], [.99 .99 .99], 30)
 
 %% Significant Electrodes
 
-ieeg_elAdd([RF3; RMIT3; RPIT1; RPIT2; RPIT3; RPIT4; RP4; RPTO1; RPTO4; RPTO5; RPTO6; RPTO7; RPTO8], 'k', 40)
-ieeg_elAdd([RF3; RMIT3; RPIT1; RPIT2; RPIT3; RPIT4; RP4; RPTO1; RPTO4; RPTO5; RPTO6; RPTO7; RPTO8], [.99 .01 .99], 30)
+ieeg_elAdd(RMIT3, 'k', 40 + 10 * elec_weights{1}(6))
+ieeg_elAdd(RMIT3, [.99 .01 .01], 30 + 10 * elec_weights{1}(6))
+
+ieeg_elAdd(RPIT2, 'k', 40 + 10 * elec_weights{1}(7))
+ieeg_elAdd(RPIT2, [.99 .01 .01], 30 + 10 * elec_weights{1}(7))
+
+ieeg_elAdd(RPIT3, 'k', 40 + 10 * elec_weights{1}(8))
+ieeg_elAdd(RPIT3, [.99 .01 .01], 30 + 10 * elec_weights{1}(8))
+
+ieeg_elAdd(RPIT4, 'k', 40 + 10 * elec_weights{1}(9))
+ieeg_elAdd(RPIT4, [.99 .01 .01], 30 + 10 * elec_weights{1}(9))
+
+ieeg_elAdd(RPTO4, 'k', 40 + 10 * elec_weights{1}(10))
+ieeg_elAdd(RPTO4, [.99 .01 .01], 30 + 10 * elec_weights{1}(10))
+
+ieeg_elAdd(RPTO5, 'k', 40 + 10 * elec_weights{1}(11))
+ieeg_elAdd(RPTO5, [.99 .01 .01], 30 + 10 * elec_weights{1}(11))
+
+ieeg_elAdd(RPTO6, 'k', 40 + 10 * elec_weights{1}(12))
+ieeg_elAdd(RPTO6, [.99 .01 .01], 30 + 10 * elec_weights{1}(12))
+
+ieeg_elAdd(RPTO7, 'k', 40 + 10 * elec_weights{1}(13))
+ieeg_elAdd(RPTO7, [.99 .01 .01], 30 + 10 * elec_weights{1}(13))
+
+ieeg_elAdd(RPTO8, 'k', 40 + 10 * elec_weights{1}(14))
+ieeg_elAdd(RPTO8, [.99 .01 .01], 30 + 10 * elec_weights{1}(14))
+
+% ieeg_elAdd_sizable([RMIT3; RPIT2; RPIT3; RPIT4; RPTO4; RPTO5; RPTO6; RPTO7; RPTO8], 30 + 10 * elec_weights{1}(6:14), [.99 .01 .01])
 
 % rotate with light - view 1
 % ieeg_viewLight(-60, -30)
@@ -184,7 +210,7 @@ ieeg_elAdd([LPIT1; LPIT2; LPIT3; LPIT4], [.99 .99 .99], 30)
 
 
 % rotate with light - view 1
-% ieeg_viewLight(60, -30);
+% ieeg_viewLight(45, -30);
 % figurewrite(sprintf('Subj%d_L_view%d',1,1),-1,[],'rendering');
 % exportgraphics(gcf,[sprintf('rendering/Subj%d_L_view%d.eps',1,1)]);
 
@@ -195,8 +221,13 @@ ieeg_elAdd([LPIT1; LPIT2; LPIT3; LPIT4], [.99 .99 .99], 30)
 
 %% Significant Electrodes
 
-ieeg_elAdd([LPIT1; LPIT2; LPIT3; LPT1; LPT3; LPT4; LPT6], 'k', 40)
-ieeg_elAdd([LPIT1; LPIT2; LPIT3; LPT1; LPT3; LPT4; LPT6], [.99 .01 .99], 30)
+
+ieeg_elAdd(LPIT1, 'k', 40 + 10 * elec_weights{1}(6))
+ieeg_elAdd(LPIT1, [.99 .01 .01], 30 + 10 * elec_weights{1}(6))
+
+
+
+ieeg_elAdd([LPIT1; LPIT2; LPIT3; LPT3; LPT4], [.99 .01 .01], 30+elec_weights{1}(6:14))
 
 % rotate with light - view 1
 % ieeg_viewLight(60, -30);
@@ -282,12 +313,12 @@ LMST4 = [-54.3, -5.3, -34];
 ieeg_elAdd([LMST1; LMST2; LMST3; LMST4], 'k', 40)
 ieeg_elAdd([LMST1; LMST2; LMST3; LMST4], [.99 .99 .99], 30)
 
-LPST1 = [-52, -25, -35.5];
-LPST2 = [-53 -33, -32.5];
-LPST3 = [-53.5, -42, -30.5];
-LPST4 = [-53.5, -48.5, -25.5];
-LPST5 = [-53, -55, -22];
-LPST6 = [-50.5, -61, -13.5];
+LPST6 = [-52, -25, -35.5];
+LPST5 = [-53 -33, -32.5];
+LPST4 = [-53.5, -42, -30.5];
+LPST3 = [-53.5, -48.5, -25.5];
+LPST2 = [-53, -55, -22];
+LPST1 = [-50.5, -61, -13.5];
 
 ieeg_elAdd([LPST1; LPST2; LPST3; LPST4; LPST5; LPST6], 'k', 40)
 ieeg_elAdd([LPST1; LPST2; LPST3; LPST4; LPST5; LPST6], [.99 .99 .99], 30)
@@ -308,7 +339,7 @@ ieeg_elAdd([LTO1; LTO2; LTO3; LTO4; LTO5; LTO6; LTO7; LTO8], 'k', 40)
 ieeg_elAdd([LTO1; LTO2; LTO3; LTO4; LTO5; LTO6; LTO7; LTO8], [.99 .99 .99], 30)
 
 % rotate with light - view 1
-% ieeg_viewLight(60, -30);
+% ieeg_viewLight(45, -30);
 % figurewrite(sprintf('Subj%d_L_view%d',2,1),-1,[],'rendering');
 % exportgraphics(gcf,[sprintf('rendering/Subj%d_L_view%d.eps',2,1)]);
 
@@ -319,8 +350,8 @@ ieeg_elAdd([LTO1; LTO2; LTO3; LTO4; LTO5; LTO6; LTO7; LTO8], [.99 .99 .99], 30)
 
 %% Significant Electrodes
 
-ieeg_elAdd([LF1; LF3; LPST1; LPST2; LPST3; LPST4; LP4; LTO3; LTO6], 'k', 40)
-ieeg_elAdd([LF1; LF3; LPST1; LPST2; LPST3; LPST4; LP4; LTO3; LTO6], [.99 .01 .99], 30)
+ieeg_elAdd([LPST1; LPST2; LPST3; LPST4; LP4; LTO6], 'k', 40+elec_weights{2}(1:6))
+ieeg_elAdd([LPST1; LPST2; LPST3; LPST4; LP4; LTO6], [.99 .01 .01], 30+elec_weights{2}(1:6))
 
 % rotate with light - view 1
 % ieeg_viewLight(60, -30);
@@ -406,12 +437,12 @@ RMST4 = [54.3, -5.3, -34];
 ieeg_elAdd([RMST1; RMST2; RMST3; RMST4], 'k', 40)
 ieeg_elAdd([RMST1; RMST2; RMST3; RMST4], [.99 .99 .99], 30)
 
-RPST1 = [52, -25, -34.5];
-RPST2 = [53 -33, -31];
-RPST3 = [53.5, -42, -28];
-RPST4 = [53.5, -48.5, -24.5];
-RPST5 = [53, -55, -22];
-RPST6 = [50.5, -61, -13.5];
+RPST6 = [52, -25, -34.5];
+RPST5 = [53 -33, -31];
+RPST5 = [53.5, -42, -28];
+RPST3 = [53.5, -48.5, -24.5];
+RPST2 = [53, -55, -22];
+RPST1 = [50.5, -61, -13.5];
 
 ieeg_elAdd([RPST1; RPST2; RPST3; RPST4; RPST5; RPST6], 'k', 40)
 ieeg_elAdd([RPST1; RPST2; RPST3; RPST4; RPST5; RPST6], [.99 .99 .99], 30)
@@ -432,7 +463,7 @@ ieeg_elAdd([RTO1; RTO2; RTO3; RTO4; RTO5; RTO6; RTO7; RTO8], 'k', 40)
 ieeg_elAdd([RTO1; RTO2; RTO3; RTO4; RTO5; RTO6; RTO7; RTO8], [.99 .99 .99], 30)
 
 % rotate with light - view 1
-% ieeg_viewLight(-60, -30)
+% ieeg_viewLight(-45, -30)
 % figurewrite(sprintf('Subj%d_R_view%d',2,1),-1,[],'rendering');
 % exportgraphics(gcf,[sprintf('rendering/Subj%d_R_view%d.eps',2,1)]);
 
@@ -443,8 +474,8 @@ ieeg_elAdd([RTO1; RTO2; RTO3; RTO4; RTO5; RTO6; RTO7; RTO8], [.99 .99 .99], 30)
 
 %% Significant Electrodes
 
-ieeg_elAdd([RPST1; RPST3; RPST4; RPST5; RP4; RTO6; RTO7; RTO8], 'k', 40)
-ieeg_elAdd([RPST1; RPST3; RPST4; RPST5; RP4; RTO6; RTO7; RTO8], [.99 .01 .99], 30)
+ieeg_elAdd([RPST3; RPST5; RTO6; RTO7; RTO8], 'k', 40+elec_weights{2}(7:11))
+ieeg_elAdd([RPST3; RPST5; RTO6; RTO7; RTO8], [.99 .01 .01], 30+elec_weights{2}(7:11))
 
 % rotate with light - view 1
 % ieeg_viewLight(-60, -30)
