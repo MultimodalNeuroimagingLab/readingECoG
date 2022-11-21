@@ -363,7 +363,7 @@ for zzz=1:length(subjects)
              a1.stimclassrec(ttt)) = temp_raw;
         
         temp_raw(isnan(temp_raw)) = 0;
-        [S,f_spectra] = getWaveletSpectrogram(temp_raw, fsorig, [1, fupper]);   % Returns the Morlet (Gabor) wavelet transform (Spectrogram) for a signal - HH
+        [Spectra,f_spectra] = getWaveletSpectrogram(temp_raw, fsorig, [1, fupper]);   % Returns the Morlet (Gabor) wavelet transform (Spectrogram) for a signal - HH
         
         %Uncomment below for spectral analysis (This requies a huge
         %memory!!)
@@ -390,90 +390,84 @@ for zzz=1:length(subjects)
   end  
 end
 
-%%  Baseline subtraction and normalization
+%%  Broadband - Baseline subtraction and normalization
 
 % save('Feb21_exttime_psd.mat','-v7.3');
-% load('Feb21_exttime_psd.mat');
+load('Feb21_exttime_psd.mat');
 
-% new: mean across time -500 to 0 ms, then across 6 trials, all stim, and then 2 tasks
-bb_base = nanmean( nanmean( nanmean( nanmean( bb_data(1:100, :, :, :, :, :), 1), 5), 6), 4);
-bbdata_pc = bsxfun(@rdivide, bb_data, bb_base) - 1;
+% new: mean across time -500 to -100 ms, then across 6 trials, all stim, and then 2 tasks
+winlen_base = find(epochtime_bb > -0.5 & epochtime_bb < -0.1);
+bb_base = nanmean( nanmean( nanmean( nanmean( bb_data(winlen_base, :, :, :, :, :), 1), 5), 6), 4);
 
-% old
-% bb_base = nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1); % mean across trials, then mean across time 0:500ms
-% bbdata_br = bb_data - nanmean(nanmean(bb_data(1:100, :, :, :, :, :),5),1); % mean across trials, then mean across time 0:500ms
-% bbdata_pc = bsxfun(@rdivide,bbdata_br,nanmean(nanmean(bb_base(:, :, :, :, :, setdiff(1:24,[1 3])),6),4));
+% bb x-fold change
+bbdata_pc = bsxfun(@rdivide, bb_data, bb_base)- 1;
 
-% take log10 here:
-% also take mean baseline across everything (fix + cat) first
-% spectra_fix = log(spectra_fix) - log(mean(spectra_fix(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
-% spectra_cat = log(spectra_cat) - log(mean(spectra_cat(1:1001,zzz,ccc,stimco,a1.stimclassrec(ttt),:),1));
+%%  Alpha - Baseline subtraction and normalization
 
-%plotting spectra
-%load('dg_colormap.mat', 'cm') %KM color scheme;
-%figure,uimagesc(spectratime,f_spectra,squeeze(spectra_cat(:,1,75,1,5,:))',[-5 5]); axis xy; colormap(cm); colorbar
+% new: mean across time -500 to -100 ms, then across 6 trials, all stim, and then 2 tasks
+winlen_base = find(epochtime_bb > -0.5 & epochtime_bb < -0.1);
+alpha_base = nanmean( nanmean( nanmean( nanmean( alpha_data( winlen_base, :, :, :, :, :), 1), 5), 6), 4);
 
-%% Stats
+% bb x-fold change
+alphadata_pc = bsxfun(@rdivide, alpha_data, alpha_base)- 1;
 
-% task_number = {[1 2 3 4]   [5  6  7  8]  [9  10 11 12] [13 14 15 16]};
-% stimgroups  = {[6 7 8 9]   [10 11 12 13] [14 15 16 4]  [17 18 19 5]};% [20 21 22 10] [2 23 24]};
-% stimleg  = {["0", "25", "50", "75"]  ["0", "25", "50", "75"] ["3" "5" "8" "100"] ["4" "6" "10" "100"]};
-% stimgrnames = {'Word Phase' 'Face Phase'    'Word Contrast'   'Face Contrast'};%   'Noise Con'   'Other'};
-
+%% Finding responsive electrodes
 
 stimgroups  = {4, 5};
-stimleg  = {"Word", "Face"};
 stimgrnames = {'Word' 'Face'};
 
-p = zeros(length(subjects), numchannels);
-t = zeros(length(subjects), numchannels);
-r = zeros(length(subjects), numchannels);
-randstat = zeros(length(subjects), numchannels);
+p = NaN(length(subjects), numchannels);
+t = NaN(length(subjects), numchannels);
+% d = NaN(length(subjects), numchannels);
 
-for zzz = 1:2
+% Time window for estimating responsiveness 100 - 500 ms
+winlen_resp = find(epochtime_bb > 0.1 & epochtime_bb < 0.5);   % earlier was 100 ms - 350 ms
+
+for zzz = 1:2 % subjects
     for ccc = 1:numchannels
         x = [];
-        for ppp = 1:2
-            for stimg = 1:2
+        x_base = [];
+        for ppp = 1:2 % tasks
+            for stimg = 1:2 % stimulus category
                 for stimt = 1:numreps
-                     x = [x; squeeze(mean(bbdata_pc(121:171, zzz, ccc, ppp, stimt, stimgroups{stimg}), 1))]; % 100 ms - 350 ms
+                     x = [x; squeeze(mean(bbdata_pc(winlen_resp, zzz, ccc, ppp, stimt, stimgroups{stimg}), 1))]; % 100 ms - 350 ms
+                     x_base = [x_base; squeeze(mean(bbdata_pc(winlen_base, zzz, ccc, ppp, stimt, stimgroups{stimg}), 1))]; % -500:0 ms
                 end
             end
         end
-        [~, pval, ~, stats] = ttest(x);
+        [~, pval, ~, stats] = ttest(x, x_base, 'tail', 'right');
         p (zzz, ccc) = pval;
-        t (zzz, ccc) = stats.tstat;
-%         d (zzz, ccc) = mean(x)/ sqrt(var(x));
-        r (zzz, ccc) = corrcoef(x)^2;
-        randstat (zzz, ccc)  = mean(x);
+%         t (zzz, ccc) = stats.tstat;
+%         d (zzz, ccc) = (mean(x)-mean(x_base))./sqrt(.5*(std(x).^2 + std(x_base).^2));
     end
 end
 
+clear x x_base
+
 [p_fdr, p_th] = ccepPCC_fdr(p,0.05); % fdr -DH
 
-for zzz = 1 : length(subjects)
-    figure,scatter (1 : numchannels, squeeze(p_fdr(zzz, :))');
-    hold on
-    yline(0.05);
-end
+%% Only visual respnsive + remove noisy : all manual/visually
 
+gcc = {horzcat((9:11), 41, (44:46), (74:78)), horzcat((20:22), 28, 44, (86:87), 108, 110) };
 
-%% Good Channels(Visually Identified)
+% Categorizing electrodes anatomically
 
-%EVCgcc = {horzcat(74:75),horzcat(43:44, 108)};
+% Early Visual Cortex
+elec_EVC = {[74, 75], []};
 
-%LVCgcc = {horzcat(76:78),horzcat(45:46, 109:110)};
+% Late Visual
+elec_LVC = {[76, 77, 78], [44, 108, 110]};
 
-%gcc = sort(horzcat((9:11)*2-1, (44:46)*2-1, (74:78)*2-1, (3)*2, (20:22)*2, (86:87)*2, (108:110)*2));
-
-% gcc = {horzcat((9:11), (44:46), (74:78)), horzcat((3), (20:22), (86:87), (108:110))};
-
-gcc = {horzcat((9:11), 15, 41, (44:46), (74:78)), horzcat((20:22), 28, 44, (86:87), 108, 110) };
+% Ventral Temporal
+elec_VTC = {horzcat((9:11), 41, (44:46)), horzcat((20:22), 28, (86:87))};
 
 %% Category Selectivity
 
-d = zeros(length(subjects), numchannels);
-y = zeros(2, 2*numreps);
+stimgroups  = {4, 5};
+stimgrnames = {'Word' 'Face'};
+
+dprime = NaN(length(subjects), numchannels);
+temp1 = NaN(2, 2*numreps);      % Faces/Words x Fix/Cat * # of trials
 
 for zzz = 1:2
     for ccc = gcc{zzz}
@@ -481,67 +475,59 @@ for zzz = 1:2
             x = [];
             for ppp = 1:2
                 for stimt = 1:numreps
-                     x = [x, squeeze(mean(bbdata_pc(121:171, zzz, ccc, ppp, stimt, stimgroups{stimg}), 1))]; % 100 ms - 350 ms
+                     x = [x, squeeze(mean(bbdata_pc(winlen_resp, zzz, ccc, ppp, stimt, stimgroups{stimg}), 1))]; % 100 ms - 350 ms
                 end
             end
-            y(stimg, :) = x;
+            temp1(stimg, :) = x;
         end
-        d (zzz, ccc) = (mean(y(1,:)) - mean(y(2,:))) / sqrt(0.5 * (var(y(1,:)) + var(y(2,:))));
+        dprime (zzz, ccc) = (mean(temp1(1,:)) - mean(temp1(2,:))) / sqrt(0.5 * (var(temp1(1,:)) + var(temp1(2,:))));     % word - faces
     end
 end
 
-%% Normalized Power
+for zzz = 1:2
+    temp2 = [];
+    temp3 = [];
+    temp4 = [];
+    for ccc = elec_VTC{zzz}
+        if dprime (zzz, ccc) >= 1
+            temp2 = [temp2, ccc];
+        elseif dprime (zzz, ccc) <= -1
+            temp3 = [temp3, ccc]; 
+        else
+            temp4 = [temp4, ccc];
+        end
+    end
+    elec_VTC_w {zzz} = temp2;   % word selective 
+    elec_VTC_f {zzz} = temp3;   % face selective
+    elec_VTC_ns{zzz} = temp4;   %  non-selective
+end
+
+clear x temp1 temp2 temp3 temp4
+
+%% Normalized Power for each electrode - brain rendering
+
+stimgroups  = {4, 5};
+stimgrnames = {'Word' 'Face'};
 
 elec_weights = {};
 
 for zzz = 1:2
-    y = [];
+    temp1 = [];
     for ccc = gcc{zzz}
-        x = [];
+        temp2 = [];
         for ppp = 1:2
             for stimg = 1:2
                 for stimt = 1:numreps
-                     x = [x; squeeze(mean(bbdata_pc(121:171, zzz, ccc, ppp, stimt, stimgroups{stimg}), 1))]; % 100 ms - 350 ms
+                     temp2 = [temp2; squeeze(mean(bbdata_pc(winlen_resp, zzz, ccc, ppp, stimt, stimgroups{stimg}), 1))]; 
                 end
             end
         end
-        y = [y, mean(x)];
+        temp1 = [temp1, mean(temp2)];
     end
-    elec_weights{zzz} = normalize(y,'range');
+    elec_weights{zzz} = normalize(temp1,'range');
 end
 
-
-%% Categorizing electrode anatomically
-
-% Early Visual
-elec_EV = {[74, 75], []};
-
-% Late Visual
-elec_LV = {[76, 77, 78], [44, 108, 110]};
-
-% Ventral Temporal
-
-elec_VTC = {horzcat((9:11), 15, 41, (44:46)), horzcat((20:22), 28, (86:87))};
-
-% Category-selective VTC
-for zzz = 1:2
-    x = [];
-    y = [];
-    z = [];
-    for ccc = elec_VTC{zzz}
-        if d (zzz, ccc) >= 0.9
-            x = [x, ccc];
-        elseif d (zzz, ccc) <= -0.9
-            y = [y, ccc]; 
-        else
-            z = [z, ccc];
-        end
-    end
-    elec_VTC_f {zzz} = y;   % face selective 
-    elec_VTC_w {zzz} = x;   % word selective
-    elec_VTC_ns{zzz} = z;   %  non-selective
-end
-
+clear temp1 temp2
 
 %% Reaction Time
 
@@ -588,7 +574,7 @@ counter = 1;
 
 
 % One plot per subject per good electrode
-for zzz = 1:length(subjects)
+for zzz = 1% 1:length(subjects)
    
 %     gcc = [];
 %     for ccc = 1 : numchannels
@@ -597,9 +583,10 @@ for zzz = 1:length(subjects)
 %         end
 %     end
     
-    for ccc = gcc{zzz}
+    for ccc = 30% gcc{zzz}
         
         %figureprep([100 100 1700 1100]);
+        figure
         
         for ttt = 1:2
             
@@ -636,19 +623,19 @@ for zzz = 1:length(subjects)
             
         end
         
-        for ttt = 1:2
-            
-            for stimg = 1:length(stimgroups)
-                
-                subplot(4,length(stimgroups),stimg+(ttt-1)*length(stimgroups));
-                hold on;
-                ax = axis;
-                axis([ax(1:2) mn mx]);
-                
-            end
-            
-        end
-        
+%         for ttt = 1:2
+%             
+%             for stimg = 1:length(stimgroups)
+%                 
+%                 subplot(4,length(stimgroups),stimg+(ttt-1)*length(stimgroups));
+%                 hold on;
+%                 ax = axis;
+%                 axis([ax(1:2) mn mx]);
+%                 
+%             end
+%             
+%         end
+%         
         for stimg = 1:length(stimgroups)
 
             mx = -Inf; mn = Inf;
@@ -679,14 +666,14 @@ for zzz = 1:length(subjects)
             
         end
         
-        for stimg = 1:length(stimgroups)
-                
-            subplot(4,length(stimgroups),2*length(stimgroups)+stimg);
-            hold on;
-            ax = axis;
-            axis([ax(1)-1 ax(2)+1 mn mx]);
-                
-        end
+%         for stimg = 1:length(stimgroups)
+%                 
+%             subplot(4,length(stimgroups),2*length(stimgroups)+stimg);
+%             hold on;
+%             ax = axis;
+%             axis([ax(1)-1 ax(2)+1 mn mx]);
+%                 
+%         end
         
         for stimg = 1:length(stimgroups)
 
@@ -719,7 +706,7 @@ for zzz = 1:length(subjects)
         end
         
         %figurewrite(sprintf('Subj%d_ch%03d_%s',zzz,ccc,channellabels{zzz}{ccc}),-1,[],'stimtimecourse');
-        %exportgraphics(gcf,[sprintf('stimtimecourse/Subj%d_ch%03d_%s.eps',zzz,ccc,channellabels{zzz}{ccc})]);
+        %exportgraphics(gcf,[sprintf('stimtimecourse/E_%s.eps',zzz,ccc,channellabels{zzz}{ccc})]);
         
         counter = counter+1;
         
@@ -1040,22 +1027,22 @@ end
 %% Plotting Spectograms
 
 tasklabels = {'Fix' 'Cat'};
-stimgroups  = {[6 7 8 9]   [10 11 12 13] [14 15 16 4] [17 18 19 5]};% [20 21 22 10] [2 23 24]};
-stimleg  = {["0", "25", "50", "75"]  ["0", "25", "50", "75"] ["3" "5" "8" "100"] ["4" "6" "10" "100"]};
+stimgroups  = {[6 7 9]   [10 11 12 13] [14 15 16 4] [17 18 19 5]};% [20 21 22 10] [2 23 24]};   % word PC 50 ignored bad trial
+stimleg  = {["0", "25", "75"]  ["0", "25", "50", "75"] ["3" "5" "8" "100"] ["4" "6" "10" "100"]};
 stimgrnames = {'Word Phase-coherence' 'Face Phase-coherence'    'Word Contrast'   'Face Contrast'};%   'Noise Con'   'Other'};
 
-spect_base = zeros(length(subjects),numchannels,77);
+spect_base = nan(length(subjects),numchannels,77);
 
-for zzz = 2%1:2
-    for ccc = 108%1:numchannels
+for zzz = 1:2
+    for ccc =  elec_consider{zzz}
         S_temp = [];
         for ppp = 1:2
             for stimg = 1:length(stimgroups)
                 for stimc = 1:length(stimgroups{stimg})
-                    temp = mean(data(:, zzz, ccc, ppp, :, stimgroups{stimg}(stimc)), 5);
+                    temp = mean(data(winlen_base, zzz, ccc, ppp, :, stimgroups{stimg}(stimc)), 5);
                     temp(isnan(temp)) = 0;
-                    [S,f_spectra] = getWaveletSpectrogram(temp, fsorig, [1, fupper]);
-                    S_temp = [S_temp; S'];
+                    [Spectra,f_spectra] = getWaveletSpectrogram(temp, fsorig, [1, fupper]);
+                    S_temp = [S_temp; Spectra'];
                 end
             end
         end
@@ -1072,8 +1059,8 @@ for zzz = 2%1:2
                 for stimc = 1:length(stimgroups{stimg})
                     temp = mean(data(:, zzz, ccc, ppp, :, stimgroups{stimg}(stimc)), 5);
                     temp(isnan(temp)) = 0;
-                    [S,f_spectra] = getWaveletSpectrogram(temp, fsorig, [1, fupper]);
-                    spectra = log10(S) - log10(squeeze(spect_base(zzz,ccc,:)));
+                    [Spectra,f_spectra] = getWaveletSpectrogram(temp, fsorig, [1, fupper]);
+                    spectra = log10(Spectra) - log10(squeeze(spect_base(zzz,ccc,:)));
                     %plotting spectra
                     load('dg_colormap.mat', 'cm') %KM color scheme;
                     figure, uimagesc(epochtime(1:9001),f_spectra,spectra,[-1 1]); axis xy; colormap(cm); colorbar
