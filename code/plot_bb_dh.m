@@ -57,7 +57,7 @@ end
 
 plotting_order =[6     7     8     9 10    11    12     13 14   15  16  4 17  18   19     5];   % [20 21 22 10] [2 23 24]};
 
-elec_consider{1} = [9];
+elec_consider{2} = [86];
 winlen = find(epochtime_bb>0 & epochtime_bb<.2);
 
 for zzz = 2%:2 % subject
