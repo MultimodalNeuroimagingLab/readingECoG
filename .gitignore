@@ -19,14 +19,13 @@ data/
 misc/
 References/
 readingECoG-raw/
-code/brainvisionEEGconverter.m
-code/plot_bb_dh.m
+
 
 # No matlab metafiles
 *.m~
 *.asv
 *.ps
 
-# Do not save data files
+# Do not safe data files
 *.mat
 

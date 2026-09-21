@@ -91,7 +91,7 @@ end
 
 % bandpass filter 
 for ii = 1:size(bands,1)
-    fprintf('[%s] Filtering signal in band %d-%d\n', mfilename, bands(ii,1),bands(ii,2));
+    %fprintf('[%s] Filtering signal in band %d-%d\n', mfilename, bands(ii,1),bands(ii,2));
     bp(:,:,ii) = butterpass_eeglabdata_nyu(x,bands(ii,:),srate); 
     % divide power by band width?
     %tmp = butterpass_eeglabdata_nyu(x,bands(ii,:),srate);
@@ -103,7 +103,7 @@ end
 if size(bp, 2) == 1, bp = squeeze(bp); end
 
 % compute broadband 
-fprintf('[%s] Computing broadband... \n', mfilename);
+%fprintf('[%s] Computing broadband... \n', mfilename);
 
 methodstr = func2str(method);
 
