@@ -13,12 +13,12 @@ ECoG data (BIDS-formatted) as well as the corresponding derivatives used in the 
 ## Prerequisites
 1.	Matlab 2023a or above
 2.	Download the derivatives folder from the repository mentioned above
-3.	Following dependencies:
-a.	https://github.com/MultimodalNeuroimagingLab/mnl_ieegBasics.git
-b.	https://github.com/cvnlab/knkutils.git
-c.	https://github.com/spm/spm12.git
-d.	https://github.com/fieldtrip/fieldtrip.git
-e.	https://chronux.org/chronuxFiles/filesReleases/chronux_2_11.zip
+3.	Following dependencies: <br> 
+a.	https://github.com/MultimodalNeuroimagingLab/mnl_ieegBasics.git <br> 
+b.	https://github.com/cvnlab/knkutils.git <br> 
+c.	https://github.com/spm/spm12.git <br> 
+d.	https://github.com/fieldtrip/fieldtrip.git <br> 
+e.	https://chronux.org/chronuxFiles/filesReleases/chronux_2_11.zip <br> 
 
 ## Steps to reproduce the figures:
 1.	Setup your path in personalDataPath.m
