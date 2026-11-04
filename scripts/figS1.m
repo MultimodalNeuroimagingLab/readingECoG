@@ -27,7 +27,7 @@ resp          = nan(length(subjects),numreps,numstimuli);
 buttonpress = zeros(length(subjects),numreps,numstimuli);
 stimc       = zeros(length(subjects),numstimuli); 
 
-for zzz = 1%:length(subjects)
+for zzz = 1:length(subjects)
 
     % find behavioral (Log) files
     files = matchfiles( fullfile( dataPath.input, 'derivatives/LogFiles', subjects{zzz}, '*.mat'));
