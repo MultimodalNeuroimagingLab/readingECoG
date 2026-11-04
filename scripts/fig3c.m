@@ -71,7 +71,8 @@ for zzz = 1:2
         spectra = log10(temp_spect) - log10(spect_base);
         
         figure
-        load('external/dg_colormap.mat', 'cm') % KJM color scheme;
+         % color scheme cortusey of KJ Miller, Mayo Clinic
+        load('external/dg_colormap.mat', 'cm')
 
         uimagesc(t_spect,f_spect,spectra', [-1 1]); axis xy; colormap(cm); colorbar
         ylabel('Frequency (Hz)');

@@ -27,7 +27,7 @@ resp          = nan(length(subjects),numreps,numstimuli);
 buttonpress = zeros(length(subjects),numreps,numstimuli);
 stimc       = zeros(length(subjects),numstimuli); 
 
-for zzz = 1:length(subjects)
+for zzz = 1%:length(subjects)
 
     % find behavioral (Log) files
     files = matchfiles( fullfile( dataPath.input, 'derivatives/LogFiles', subjects{zzz}, '*.mat'));
@@ -42,6 +42,7 @@ for zzz = 1:length(subjects)
       a1 = load(files{ii});
       
       % extract the button press time and which button was pressed
+      % atlaeast 0.25 s between presses 
       [keytimes,~,keybuttons] = ptviewmoviecheck(a1.timeframes,a1.timekeys,0.25,'t',0.25,1);
       
       for jj = 1 : size(a1.trialpattern, 1)  % 68 trials

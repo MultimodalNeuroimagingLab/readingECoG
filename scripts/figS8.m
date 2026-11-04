@@ -89,8 +89,12 @@ end
 
 clear temp*
 
-if matches( roiName, 'word'), met_data_w = met_data; 
-elseif matches( roiName, 'face'), met_data_f = met_data; end
+if matches( roiName, 'word'), met_data_w = met_data;
+elseif matches( roiName, 'face'), met_data_f = met_data;
+elseif matches( roiName, 'EVC'), met_data_e = met_data;
+end
+
+clear met_data
 
 
 %% Combining faces and words for EVC
@@ -108,9 +112,7 @@ for stimg = 1 : length(stimgroups)
 
     for stimc = 1 : 2: length(stimgroups{stimg})
 
-        temp_data = ( squeeze( met_data(:, :, stimgroups{stimg}(stimc:stimc+1)-3, :)));
-        temp_data = permute( temp_data, [1, 3, 2, 4]);
-        temp_data = reshape( temp_data, [], 2, 3);
+        temp_data = squeeze( mean( met_data_e(:, :, stimgroups{stimg}(stimc:stimc+1)-3, :), 3, 'omitnan'));
 
         nTrials = size( temp_data, 1);
         ts = tinv([0.16, 0.84], nTrials - 1);
@@ -258,9 +260,7 @@ stimg = 2;
 
     for stimc = 1 : 2: length(stimgroups{stimg})
 
-        temp_data = ( squeeze( met_data(:, :, stimgroups{stimg}(stimc:stimc+1)-3, :)));
-        temp_data = permute( temp_data, [1, 3, 2, 4]);
-        temp_data = reshape( temp_data, [], 2, 3);
+        temp_data = squeeze( mean( met_data_e(:, :, stimgroups{stimg}(stimc:stimc+1)-3, :), 3, 'omitnan'));
 
         data_EVC ((stimc+1)/2, :, :, :) = temp_data;
 
@@ -305,23 +305,44 @@ for ii = 1:3
     clear ii scl temp*
 
     % ME stats
-    %  4 (contrast levels) x 26 (electrodes) x 2 (fix/cat) x 3 (dur, on, peak)
+    %  4 (contrast levels) x 20 (electrodes) x 2 (fix/cat) x 3 (dur, on, peak)
     yy = squeeze(data_timings(:,:,:,ii));
+    [nCon, nElec, nTasks] = size(yy);
 
-    cond_task = cat(3,zeros(size(yy(:,:,1))),ones(size(yy(:,:,1))));
-    cond_contrast = cat(1,zeros(size(yy(1,:,:))),ones(size(yy(1,:,:))),1+ones(size(yy(1,:,:))),2+ones(size(yy(1,:,:))));
-    cond_roi = cat(2,zeros(size(yy(:,1:12,:))),ones(size(yy(:,13:end,:))));     % EVC or VTC
+    % electrodes wrt subjects (1/2)
+    elecSub = [0 0 0 0 1 1 0 0 1 1 1 1 1 0 0 0 0 0 0 0];
 
-    cond_sub = reshape(repmat(repmat([0 0 0 0 0 0 0 0 1 1 1 1 0 0 1 1 1 1 1 0 0 0 0 0 0 0], 4,1), 1, 2), 4, 26, []);
+    % electrodes wrt ROIs (EVC/VTC)
+    elecROI = [zeros(1,6), ones(1,14)];
 
-    tbl = table(yy(:),cond_task(:),cond_contrast(:), cond_roi(:), cond_sub(:), ...
-        'VariableNames',{'timings','task_condition','contrast_condition', 'roi_condition', 'sub_idx'});
+    % contrast levels (0 1 2 3)
+    cond_con   = repmat( reshape(0:(nCon-1), nCon, 1, 1),   1, nElec, nTasks) - 1.5;
 
-    % no subject variable
-    lme = fitlme(tbl,'timings ~ task_condition * contrast_condition * roi_condition + (1|sub_idx)')
-    anova(lme)                             % perform F-test that all fixed-effects coefficients are zero
-    %anova(lme,'DFMethod','satterthwaite')   % get degrees of freedom w Satterthwaite method. Produces smaller denominator degrees of freedom and slightly larger p-values
+    % task (Fix/Cat)
+    cond_tasks = repmat( reshape(0:(nTasks-1), 1, 1, nTasks), nCon, nElec, 1);
 
-    %fixedEffects(lme)
+    % ROI (EVC/VTC)
+    cond_ROI   = repmat( reshape(elecROI, 1, nElec, 1),      nCon, 1, nTasks);
+
+    % Subject (1/2)
+    cond_sub   = repmat( reshape(elecSub, 1, nElec, 1),      nCon, 1, nTasks);
+
+    % electodes as conditional
+    cond_elec  = repmat(  reshape(0:(nElec-1), 1, nElec, 1), nCon, 1, nTasks);
+
+    tbl = table( ...
+        yy(:), ...
+        cond_con(:), ...
+        categorical(cond_tasks(:), 0:1, {'Fix', 'Cat'}), ...
+        categorical(cond_ROI(:),   0:1, {'EVC', 'VTC'}), ...
+        categorical(cond_sub(:),   0:1, {'Sub-01','Sub-02'}), ...
+        categorical(cond_elec(:)), ...
+        'VariableNames', ...
+        {'Response','Contrast','Tasks','ROI','Subject','Electrode'});
+
+    lme = fitlme(tbl,   ...
+        'Response ~ Contrast*Tasks*ROI + (1|Subject) + (1|Electrode)', ...
+        'FitMethod','REML', ...
+        'DummyVarCoding','effects')
 
 end

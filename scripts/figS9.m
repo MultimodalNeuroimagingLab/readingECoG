@@ -4,8 +4,15 @@
 %
 % ZQ 2023 Mayo Clinic
 %
+
+%% Load supplementary data
+
+% set your data path
+dataPath = setLocalDataPath(1); 
+load( fullfile( dataPath.input, 'derivatives', 'albe_ecogTaskDemands.mat'));
+
 %%  Alpha - Baseline subtraction and normalization
-% similar to HFB (above)
+% similar to HFB
 
 % Removing bad trials (4 in total for subject 1, 3 of 4 during categorization)
 
@@ -29,7 +36,7 @@ alpha_base = geomean( geomean( temp_base, 4, 'omitnan'), 1, 'omitnan');
 alphadata_pc = bsxfun( @rdivide, alpha_data, alpha_base) - 1;
 
 %%  Beta - Baseline subtraction and normalization
-% similar to HFB (above)
+% similar to Alpha (above)
 
 % Removing bad trials (4 in total for subject 1, 3 of 4 during categorization)
 

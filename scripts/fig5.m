@@ -34,10 +34,10 @@ stimgrnames = {'WordContrast'              'FaceContrast'};
 % stimgrnames = {'WordPhaseCoherence'               'FacePhaseCoherence'};
 
 
-temp_dir = fullfile( dataPath.output, 'eps/avg/fmri', roiName);
-if not(isfolder(temp_dir))
-    mkdir(temp_dir)
-end
+% temp_dir = fullfile( dataPath.output, 'eps/avg/fmri', roiName);
+% if not(isfolder(temp_dir))
+%     mkdir(temp_dir)
+% end
  
 % loop across stimulus groups
 for stimg = 1:length(stimgroups)
